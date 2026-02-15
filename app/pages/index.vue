@@ -8,7 +8,7 @@
       
       <div class="max-w-5xl mx-auto relative z-10">
         <div class="flex items-center gap-3 mb-6">
-          <span class="text-4xl">🍍</span>
+          <span class="text-4xl" role="img" aria-label="Piña - Símbolo de hospitalidad criolla">🍍</span>
           <h1 class="text-3xl font-bold tracking-tight uppercase">Criollos</h1>
         </div>
         

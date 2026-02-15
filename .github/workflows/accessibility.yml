@@ -1,0 +1,32 @@
+name: Accessibility Audit
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  accessibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Build project
+        run: npm run build
+        
+      - name: Lighthouse Check
+        uses: treosh/lighthouse-config-action@v12
+        with:
+          urls: 'https://criollos-web-api.pages.dev/' # Ajustar a la URL real de Cloudflare
+          budgetPath: ./lighthouse-budget.json # Opcional: para definir límites
+          assertionResultsIndex: 0
+        continue-on-error: true # Para que no bloquee el deploy pero nos avise
