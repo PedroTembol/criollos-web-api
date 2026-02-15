@@ -1,0 +1,2 @@
+# Este archivo indica a Cloudflare Pages que no debe intentar ejecutar 'wrangler deploy' automáticamente.
+# El comando de build debe ser simplemente 'bun run build' y el directorio de salida 'dist'.
