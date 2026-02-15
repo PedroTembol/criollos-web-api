@@ -1,0 +1,306 @@
+openapi: 3.0.3
+info:
+  title: API Publico Caguas
+  version: 1.0.0
+  description: API gateway para data de movilidad en Caguas (v1).
+servers:
+  - url: /api/v1
+paths:
+  /bootstrap:
+    get:
+      summary: Datos iniciales (catalogos y posiciones)
+      parameters:
+        - name: idMarker
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Bootstrap data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BootstrapResponse'
+  /vehicles/positions:
+    get:
+      summary: Posiciones en tiempo real
+      parameters:
+        - name: idMarker
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Positions data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PositionsResponse'
+  /routes:
+    get:
+      summary: Rutas disponibles
+      responses:
+        '200':
+          description: Routes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutesResponse'
+  /stops:
+    get:
+      summary: Paradas disponibles
+      responses:
+        '200':
+          description: Stops
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StopsResponse'
+  /eta:
+    get:
+      summary: Estimado de llegada (ETA)
+      parameters:
+        - name: latlngs
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Lista de lat,lng separados por | para la ruta
+        - name: time
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Unix timestamp en segundos
+      responses:
+        '200':
+          description: ETA response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EtaResponse'
+  /feedback:
+    post:
+      summary: Enviar comentarios
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackRequest'
+      responses:
+        '200':
+          description: Feedback accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackResponse'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+  schemas:
+    BootstrapResponse:
+      type: object
+      properties:
+        assets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Asset'
+        markers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Marker'
+        routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Route'
+        routePoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoutePoint'
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoutePoint'
+        config:
+          type: object
+          additionalProperties:
+            type: string
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Position'
+        fetchedAt:
+          type: string
+          format: date-time
+    PositionsResponse:
+      type: object
+      properties:
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Position'
+        fetchedAt:
+          type: string
+          format: date-time
+    RoutesResponse:
+      type: object
+      properties:
+        routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Route'
+        fetchedAt:
+          type: string
+          format: date-time
+    StopsResponse:
+      type: object
+      properties:
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoutePoint'
+        fetchedAt:
+          type: string
+          format: date-time
+    EtaResponse:
+      type: object
+      additionalProperties: true
+    FeedbackRequest:
+      type: object
+      properties:
+        message:
+          type: string
+        msg:
+          type: string
+        rating:
+          type: number
+        source:
+          type: string
+    FeedbackResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        error:
+          $ref: '#/components/schemas/ErrorObject'
+    ErrorObject:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    Asset:
+      type: object
+      properties:
+        id:
+          type: integer
+        groupId:
+          type: integer
+        description:
+          type: string
+    Marker:
+      type: object
+      properties:
+        id:
+          type: integer
+        groupId:
+          type: integer
+        description:
+          type: string
+        lat:
+          type: number
+          nullable: true
+        lng:
+          type: number
+          nullable: true
+    Route:
+      type: object
+      properties:
+        id:
+          type: integer
+        clientId:
+          type: integer
+        description:
+          type: string
+        lineColor:
+          type: string
+        assetColorCode:
+          type: string
+        directionStartName:
+          type: string
+        directionEndName:
+          type: string
+        svgFillColor1:
+          type: string
+        svgFillColor2:
+          type: string
+        isOpen:
+          type: boolean
+        departureTimes:
+          type: string
+    RoutePoint:
+      type: object
+      properties:
+        id:
+          type: integer
+        routeId:
+          type: integer
+        direction:
+          type: integer
+        order:
+          type: integer
+        markerId:
+          type: integer
+          nullable: true
+        lat:
+          type: number
+        lng:
+          type: number
+        type:
+          type: string
+        distance:
+          type: number
+        angle:
+          type: number
+        seconds:
+          type: number
+    Position:
+      type: object
+      properties:
+        assetId:
+          type: integer
+        driverId:
+          type: integer
+        when:
+          type: string
+        speed:
+          type: number
+        inputX:
+          type: number
+        trail:
+          type: string
+        status:
+          type: integer
+        msg:
+          type: string
+        extendedDescription:
+          type: string
+        routeId:
+          type: integer
+        routePointNextId:
+          type: integer
+        routePointPrevId:
+          type: integer
+        lat:
+          type: number
+          nullable: true
+        lng:
+          type: number
+          nullable: true
