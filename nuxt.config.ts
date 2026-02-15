@@ -1,10 +1,9 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  compatibilityDate: '2025-07-15',
-  devtools: { enabled: true },
   nitro: {
     preset: 'cloudflare-pages'
   },
+  compatibilityDate: '2025-07-15',
   vite: {
     server: {
       // Permitir todos los hosts de ngrok en desarrollo
