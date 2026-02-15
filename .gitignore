@@ -5,6 +5,7 @@
 .nitro
 .cache
 dist
+.lighthouseci
 
 # Node dependencies
 node_modules

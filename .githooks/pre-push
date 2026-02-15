@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+echo -e "${YELLOW}🔎 Pre-push quality gate: build + accessibility${NC}"
+
+# 1) Build must pass
+bun run build
+
+# 2) Accessibility audit (Lighthouse CI)
+if bun run test:access; then
+  echo -e "${GREEN}✅ Accessibility gate passed${NC}"
+  exit 0
+fi
+
+echo -e "${RED}❌ Accessibility gate failed. Push blocked.${NC}"
+echo -e "${YELLOW}Tip:${NC} Run 'bun run test:access' locally, fix issues, then push again."
+exit 1
