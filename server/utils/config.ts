@@ -32,11 +32,12 @@ export function getAppConfig(): AppConfig {
   let config: any = {}
 
   try {
-    // @ts-ignore - Only available in Nuxt environment
-    const { useRuntimeConfig } = require('#imports')
-    config = useRuntimeConfig()
+    // En Nitro, useRuntimeConfig está disponible globalmente como un auto-import
+    // pero para tests unitarios fuera de Nitro, usamos un fallback a process.env
+    // @ts-ignore
+    config =
+      typeof useRuntimeConfig === 'function' ? useRuntimeConfig() : process.env
   } catch (e) {
-    // Fallback for tests or non-Nuxt environments
     config = process.env
   }
 

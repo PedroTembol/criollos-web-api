@@ -3,6 +3,29 @@ import { getAppConfig } from '../utils/config'
 import { isPublicApiRoute } from '../utils/apiRoutes'
 import { devLog } from '../utils/logging'
 
+// Rutas públicas que no requieren autenticación
+const PUBLIC_NO_AUTH_ROUTES = [
+  '/eventos',
+  '/gastronomia',
+  '/discovery',
+  '/search',
+  '/health',
+  '/notifications',
+  '/recommendations',
+  '/proactive-recommendations',
+  '/bootstrap',
+]
+
+function isNoAuthRoute(url: string): boolean {
+  return PUBLIC_NO_AUTH_ROUTES.some((route) => {
+    return (
+      url === route ||
+      url.startsWith(route + '/') ||
+      url.startsWith(route + '?')
+    )
+  })
+}
+
 export default defineEventHandler((event) => {
   // Leer la URL después de que el rewrite haya sido aplicado
   const url = event.node.req.url || ''
@@ -14,6 +37,12 @@ export default defineEventHandler((event) => {
 
   if (!isPublicApiRoute(url)) {
     devLog(`[auth] ⏭️  No es ruta de API, saltando`)
+    return
+  }
+
+  // Rutas públicas no requieren API key
+  if (isNoAuthRoute(url)) {
+    devLog(`[auth] ✅ Ruta pública, no requiere autenticación`)
     return
   }
 
