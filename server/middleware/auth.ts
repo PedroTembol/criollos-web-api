@@ -3,7 +3,7 @@ import { getAppConfig } from '../utils/config'
 import { isPublicApiRoute } from '../utils/apiRoutes'
 import { devLog } from '../utils/logging'
 
-// Rutas públicas que no requieren autenticación
+// Rutas públicas que no requieren autenticación (sin prefijo y con prefijo)
 const PUBLIC_NO_AUTH_ROUTES = [
   '/eventos',
   '/gastronomia',
@@ -14,6 +14,15 @@ const PUBLIC_NO_AUTH_ROUTES = [
   '/recommendations',
   '/proactive-recommendations',
   '/bootstrap',
+  '/api/v1/eventos',
+  '/api/v1/gastronomia',
+  '/api/v1/discovery',
+  '/api/v1/search',
+  '/api/v1/health',
+  '/api/v1/notifications',
+  '/api/v1/recommendations',
+  '/api/v1/proactive-recommendations',
+  '/api/v1/bootstrap',
 ]
 
 function isNoAuthRoute(url: string): boolean {
