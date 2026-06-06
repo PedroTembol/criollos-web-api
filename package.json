@@ -10,18 +10,30 @@
     "postinstall": "nuxt prepare",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "test:access": "lhci autorun",
+    "test": "bun test",
+    "test:local": "vitest run",
+    "deploy": "bun run test:local && bun run build && bun x wrangler pages deploy dist --project-name=criollos-web-api --branch=main",
     "hooks:install": "git config core.hooksPath .githooks"
   },
   "dependencies": {
+    "cheerio": "^1.2.0",
+    "firebase-admin": "^13.6.1",
     "nuxt": "^4.3.0",
     "vue": "^3.5.27",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@lhci/cli": "^0.15.1",
+    "@nuxt/test-utils": "^4.0.0",
     "@nuxtjs/tailwindcss": "^6.14.0",
+    "@vue/test-utils": "^2.4.6",
+    "happy-dom": "^20.8.4",
     "lucide-vue-next": "^0.564.0",
-    "prettier": "^3.8.1"
+    "playwright": "^1.58.2",
+    "playwright-core": "^1.58.2",
+    "playwright-webkit": "^1.58.2",
+    "prettier": "^3.8.1",
+    "vitest": "^4.1.0",
+    "vitest-environment-nuxt": "^1.0.1"
   }
 }

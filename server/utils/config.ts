@@ -1,4 +1,4 @@
-import { useRuntimeConfig } from '#imports'
+// Removed import { useRuntimeConfig } from '#imports' to support tests
 
 export type AppConfig = {
   upstreamBaseUrl: string
@@ -20,7 +20,7 @@ function toNumber(value: string, fallback: number) {
 function toList(value: string) {
   return value
     .split(',')
-    .map(item => item.trim())
+    .map((item) => item.trim())
     .filter(Boolean)
 }
 
@@ -29,17 +29,51 @@ function ensureTrailingSlash(value: string) {
 }
 
 export function getAppConfig(): AppConfig {
-  const config = useRuntimeConfig()
+  let config: any = {}
+
+  try {
+    // @ts-ignore - Only available in Nuxt environment
+    const { useRuntimeConfig } = require('#imports')
+    config = useRuntimeConfig()
+  } catch (e) {
+    // Fallback for tests or non-Nuxt environments
+    config = process.env
+  }
 
   return {
-    upstreamBaseUrl: ensureTrailingSlash(String(config.upstreamBaseUrl || '')),
-    idClient: toNumber(String(config.idClient || '0'), 0),
-    deviceId: String(config.deviceId || 'server'),
-    apiKeys: toList(String(config.apiKeys || '')),
-    rateLimitRpm: toNumber(String(config.rateLimitRpm || '60'), 60),
-    corsOrigins: toList(String(config.corsOrigins || '')),
-    cacheTtlPositions: toNumber(String(config.cacheTtlPositions || '10'), 10),
-    cacheTtlCatalog: toNumber(String(config.cacheTtlCatalog || '1800'), 1800),
-    cacheTtlBootstrap: toNumber(String(config.cacheTtlBootstrap || '300'), 300)
+    upstreamBaseUrl: ensureTrailingSlash(
+      String(config.upstreamBaseUrl || config.CRIOLLOS_UPSTREAM_URL || '')
+    ),
+    idClient: toNumber(
+      String(config.idClient || config.CRIOLLOS_ID_CLIENT || '0'),
+      0
+    ),
+    deviceId: String(config.deviceId || config.CRIOLLOS_DEVICE_ID || 'server'),
+    apiKeys: toList(String(config.apiKeys || config.CRIOLLOS_API_KEYS || '')),
+    rateLimitRpm: toNumber(
+      String(config.rateLimitRpm || config.CRIOLLOS_RATE_LIMIT_RPM || '60'),
+      60
+    ),
+    corsOrigins: toList(
+      String(config.corsOrigins || config.CRIOLLOS_CORS_ORIGINS || '')
+    ),
+    cacheTtlPositions: toNumber(
+      String(
+        config.cacheTtlPositions || config.CRIOLLOS_CACHE_TTL_POSITIONS || '10'
+      ),
+      10
+    ),
+    cacheTtlCatalog: toNumber(
+      String(
+        config.cacheTtlCatalog || config.CRIOLLOS_CACHE_TTL_CATALOG || '1800'
+      ),
+      1800
+    ),
+    cacheTtlBootstrap: toNumber(
+      String(
+        config.cacheTtlBootstrap || config.CRIOLLOS_CACHE_TTL_BOOTSTRAP || '300'
+      ),
+      300
+    ),
   }
 }

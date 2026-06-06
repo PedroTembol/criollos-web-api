@@ -1,27 +1,42 @@
+import { devLog, devError } from '../utils/logging'
 // Ruta sin prefijo /api/v1 que ejecuta el mismo handler que /api/v1/stops
 // Esto maneja el caso donde ngrok remueve el prefijo antes de que llegue al servidor
-import { defineEventHandler, setResponseHeader } from 'h3'
+import { defineEventHandler } from 'h3'
 import { getAppConfig } from '../utils/config'
 import { getBootstrapData } from '../utils/bootstrap'
+import {
+  applyCatalogConditionalCache,
+  buildStopsCatalogResponse,
+} from '../utils/catalogCache'
 
 export default defineEventHandler(async (event) => {
   const url = event.node.req.url || ''
-  console.log(`[stops] 📥 Petición recibida (sin prefijo): ${url}`)
-  
+  devLog(`[stops] 📥 Petición recibida (sin prefijo): ${url}`)
+
   try {
     const config = getAppConfig()
-    console.log(`[stops] ⚙️  Obteniendo datos de stops...`)
+    devLog(`[stops] ⚙️  Obteniendo datos de stops...`)
 
     const data = await getBootstrapData()
-    console.log(`[stops] ✅ Datos obtenidos exitosamente - ${data.stops?.length || 0} paradas`)
+    devLog(
+      `[stops] ✅ Datos obtenidos exitosamente - ${data.stops?.length || 0} paradas`
+    )
 
-    setResponseHeader(event, 'Cache-Control', `public, max-age=${config.cacheTtlCatalog}`)
-    return {
-      stops: data.stops,
-      fetchedAt: data.fetchedAt
+    const payload = buildStopsCatalogResponse(data)
+    if (
+      applyCatalogConditionalCache(
+        event,
+        payload,
+        config.cacheTtlCatalog,
+        data.fetchedAt
+      )
+    ) {
+      return null
     }
+
+    return payload
   } catch (error) {
-    console.error(`[stops] ❌ Error:`, error)
+    devError(`[stops] ❌ Error:`, error)
     throw error
   }
 })

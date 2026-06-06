@@ -1,8 +1,9 @@
+import { devLog, devError } from '../../utils/logging'
 import { defineEventHandler, readBody } from 'h3'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  
+
   if (!body.email) {
     throw createError({
       statusCode: 400,
@@ -12,10 +13,12 @@ export default defineEventHandler(async (event) => {
 
   // Por ahora loggeamos el interés en la consola/logs del servidor
   // En el futuro esto podría ir a Supabase o una Google Sheet
-  console.log(`[BETA SIGNUP] New interest from: ${body.email} at ${new Date().toISOString()}`)
+  devLog(
+    `[BETA SIGNUP] New interest from: ${body.email} at ${new Date().toISOString()}`
+  )
 
   return {
     ok: true,
-    message: 'Registrado con éxito'
+    message: 'Registrado con éxito',
   }
 })

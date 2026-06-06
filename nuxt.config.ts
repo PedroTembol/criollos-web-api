@@ -25,5 +25,8 @@ export default defineNuxtConfig({
     cacheTtlPositions: process.env.CACHE_TTL_POSITIONS || '10',
     cacheTtlCatalog: process.env.CACHE_TTL_CATALOG || '1800',
     cacheTtlBootstrap: process.env.CACHE_TTL_BOOTSTRAP || '300',
+    public: {
+      apiKey: process.env.PUBLIC_API_KEY || '',
+    },
   },
 })

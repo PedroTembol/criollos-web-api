@@ -18,10 +18,25 @@ paths:
       responses:
         '200':
           description: Bootstrap data
+          headers:
+            Cache-Control:
+              description: TTL público del catálogo/bootstrap actual.
+              schema:
+                type: string
+            ETag:
+              description: Weak ETag del payload para conditional GET.
+              schema:
+                type: string
+            Last-Modified:
+              description: Fecha/hora RFC 7231 basada en `fetchedAt` del bootstrap.
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/BootstrapResponse'
+        '304':
+          description: Reutiliza el bootstrap anterior cuando `If-None-Match` o `If-Modified-Since` siguen vigentes.
   /vehicles/positions:
     get:
       summary: Posiciones en tiempo real
@@ -38,26 +53,286 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PositionsResponse'
+  /vehicles/nearby:
+    get:
+      summary: Vehículos cercanos a una coordenada
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: -90
+            maximum: 90
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: -180
+            maximum: 180
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 25
+      responses:
+        '200':
+          description: Vehículos ordenados por distancia con metadata de ruta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NearbyVehiclesResponse'
+        '400':
+          description: '`lat` y `lng` son requeridos y deben ser coordenadas válidas.'
+  /notifications:
+    get:
+      summary: Feed unificado de alertas notificables
+      description: Consolida señales de tracking, eventos, discovery y gastronomía en notificaciones deduplicadas listas para polling web o entrega push.
+      parameters:
+        - name: source
+          in: query
+          required: false
+          description: Fuentes separadas por coma.
+          schema:
+            type: string
+            example: tracking,eventos
+        - name: severity
+          in: query
+          required: false
+          description: Severidades separadas por coma.
+          schema:
+            type: string
+            example: warning,critical
+        - name: seen
+          in: query
+          required: false
+          description: Dedupe keys ya vistas, separadas por coma; se excluyen del feed.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Notificaciones priorizadas y listas para presentar o entregar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationsResponse'
+        '304':
+          description: El feed no cambió para el ETag o fecha condicional enviada.
+  /tracking:
+    get:
+      summary: Snapshot enriquecido de trolleys
+      parameters:
+        - name: idMarker
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: assetId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Uno o más asset IDs separados por coma.
+        - name: routeId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Uno o más route IDs separados por coma.
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Estados a incluir (`moving`, `stopped`, `idle`, `unknown`) separados por coma.
+        - name: freshness
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Freshness a incluir (`live`, `stale`, `unknown`) separados por coma.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+          description: Máximo de vehículos a devolver después de aplicar filtros.
+      responses:
+        '200':
+          description: Tracking snapshot enriquecido con salud operativa y alertas notificables.
+          headers:
+            Cache-Control:
+              description: TTL público del snapshot actual.
+              schema:
+                type: string
+            ETag:
+              description: Weak ETag del payload filtrado para conditional GET.
+              schema:
+                type: string
+            Last-Modified:
+              description: Fecha/hora RFC 7231 basada en `fetchedAt` del snapshot.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackingResponse'
+        '304':
+          description: Reutiliza el snapshot anterior cuando `If-None-Match` o `If-Modified-Since` siguen vigentes.
   /routes:
     get:
       summary: Rutas disponibles
       responses:
         '200':
           description: Routes
+          headers:
+            Cache-Control:
+              description: TTL público del catálogo actual.
+              schema:
+                type: string
+            ETag:
+              description: Weak ETag del payload para conditional GET.
+              schema:
+                type: string
+            Last-Modified:
+              description: Fecha/hora RFC 7231 basada en `fetchedAt` del catálogo.
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RoutesResponse'
+        '304':
+          description: Reutiliza el catálogo de rutas anterior cuando `If-None-Match` o `If-Modified-Since` siguen vigentes.
+  /routes/{routeId}/stops:
+    get:
+      summary: Secuencia de paradas de una ruta
+      parameters:
+        - name: routeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Paradas ordenadas por dirección con distancia y tiempo acumulado.
+          headers:
+            Cache-Control:
+              description: TTL público del catálogo actual.
+              schema:
+                type: string
+            ETag:
+              description: Weak ETag del payload para conditional GET.
+              schema:
+                type: string
+            Last-Modified:
+              description: Fecha/hora RFC 7231 basada en el catálogo.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteStopsResponse'
+        '304':
+          description: Reutiliza la secuencia anterior cuando `If-None-Match` o `If-Modified-Since` siguen vigentes.
+        '400':
+          description: '`routeId` debe ser un entero positivo.'
+        '404':
+          description: La ruta solicitada no existe en el catálogo actual.
   /stops:
     get:
       summary: Paradas disponibles
       responses:
         '200':
           description: Stops
+          headers:
+            Cache-Control:
+              description: TTL público del catálogo actual.
+              schema:
+                type: string
+            ETag:
+              description: Weak ETag del payload para conditional GET.
+              schema:
+                type: string
+            Last-Modified:
+              description: Fecha/hora RFC 7231 basada en `fetchedAt` del catálogo.
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/StopsResponse'
+        '304':
+          description: Reutiliza el catálogo de paradas anterior cuando `If-None-Match` o `If-Modified-Since` siguen vigentes.
+  /stops/nearby:
+    get:
+      summary: Paradas cercanas a una coordenada
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: -90
+            maximum: 90
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: -180
+            maximum: 180
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 25
+        - name: maxDistanceMeters
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: Filtra paradas más lejos de este radio.
+      responses:
+        '200':
+          description: Paradas ordenadas por distancia con rutas que sirven cada parada.
+          headers:
+            Cache-Control:
+              description: TTL público del catálogo actual.
+              schema:
+                type: string
+            ETag:
+              description: Weak ETag del payload para conditional GET.
+              schema:
+                type: string
+            Last-Modified:
+              description: Fecha/hora RFC 7231 basada en el catálogo.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NearbyStopsResponse'
+        '304':
+          description: Reutiliza el resultado anterior cuando `If-None-Match` o `If-Modified-Since` siguen vigentes.
+        '400':
+          description: '`lat` y `lng` son requeridos y deben ser coordenadas válidas.'
   /eta:
     get:
       summary: Estimado de llegada (ETA)
@@ -81,6 +356,198 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EtaResponse'
+  /eventos:
+    get:
+      summary: Feed público de eventos de Visit Caguas
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Categorías a incluir separadas por coma (ej. `Música,Familia`).
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Búsqueda textual sobre título, descripción, venue, categorías y fecha visible.
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Fecha mínima inclusiva (`YYYY-MM-DD`) usando la fecha normalizada del evento.
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Fecha máxima inclusiva (`YYYY-MM-DD`) usando la fecha normalizada del evento.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+          description: Máximo de eventos a devolver después de aplicar filtros.
+      responses:
+        '200':
+          description: Eventos normalizados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventosResponse'
+  /gastronomia:
+    get:
+      summary: Feed público de gastronomía de Visit Caguas
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Categorías a incluir separadas por coma (ej. `Cafetería,Brunch`).
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Búsqueda textual sobre título, descripción, summary y categorías.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Máximo de lugares a devolver después de aplicar filtros.
+      responses:
+        '200':
+          description: Lugares gastronómicos normalizados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GastronomiaResponse'
+  /discovery:
+    get:
+      summary: Feed combinado para home con eventos próximos y gastronomía destacada
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Tipos a incluir (`evento`, `gastronomia`) separados por coma.
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Categorías a incluir separadas por coma (ej. `Música,Cafe`).
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Búsqueda textual sobre título, subtítulo, descripción, categoría y fecha visible.
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Fecha mínima inclusiva (`YYYY-MM-DD`) aplicada a items de tipo `evento` dentro del feed mixto.
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Fecha máxima inclusiva (`YYYY-MM-DD`) aplicada a items de tipo `evento` dentro del feed mixto.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 24
+          description: Máximo de resultados a devolver después de aplicar filtros.
+      responses:
+        '200':
+          description: Discovery feed normalizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryResponse'
+  /recommendations:
+    get:
+      summary: Recomendaciones criollas listas para UI
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Tipos a incluir (`service`, `mobility`, `plan`, `food`) separados por coma.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+          description: Máximo de cards recomendadas a devolver.
+      responses:
+        '200':
+          description: Cards accionables generadas desde tracking y discovery.
+          headers:
+            Cache-Control:
+              description: TTL público de la recomendación combinada.
+              schema:
+                type: string
+            ETag:
+              description: Weak ETag del payload para conditional GET.
+              schema:
+                type: string
+            Last-Modified:
+              description: Fecha/hora RFC 7231 usada para revalidación.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationsResponse'
+        '304':
+          description: Reutiliza las recomendaciones anteriores cuando el payload no cambió.
+  /search:
+    get:
+      summary: Búsqueda global (Trolley, Eventos, Gastronomía)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Término de búsqueda (min 1 carácter).
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+          description: Máximo de resultados totales.
+      responses:
+        '200':
+          description: Resultados de búsqueda agregados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
   /feedback:
     post:
       summary: Enviar comentarios
@@ -97,6 +564,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FeedbackResponse'
+  /health:
+    get:
+      summary: Estado de salud del ecosistema y sus dependencias
+      security:
+        - ApiAuth: []
+      responses:
+        '200':
+          description: Reporte de salud global y por dependencia.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -148,6 +627,67 @@ components:
         fetchedAt:
           type: string
           format: date-time
+    TrackingResponse:
+      type: object
+      properties:
+        vehicles:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackingVehicle'
+        fetchedAt:
+          type: string
+          format: date-time
+        summary:
+          $ref: '#/components/schemas/TrackingSummary'
+    TrackingSummary:
+      type: object
+      properties:
+        totalVehicles:
+          type: integer
+        filteredVehicles:
+          type: integer
+        liveVehicles:
+          type: integer
+        staleVehicles:
+          type: integer
+        unknownVehicles:
+          type: integer
+        movingVehicles:
+          type: integer
+        stoppedVehicles:
+          type: integer
+        idleVehicles:
+          type: integer
+        unknownStatusVehicles:
+          type: integer
+        routeIds:
+          type: array
+          items:
+            type: integer
+        routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackingRouteSummary'
+        upcomingStops:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackingUpcomingStopSummary'
+        bounds:
+          allOf:
+            - $ref: '#/components/schemas/TrackingBounds'
+          nullable: true
+        freshnessBuckets:
+          $ref: '#/components/schemas/TrackingFreshnessBuckets'
+        telemetry:
+          $ref: '#/components/schemas/TrackingTelemetryAgeSummary'
+        dataQuality:
+          $ref: '#/components/schemas/TrackingDataQualitySummary'
+        serviceHealth:
+          $ref: '#/components/schemas/TrackingServiceHealth'
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackingSummaryAlert'
     RoutesResponse:
       type: object
       properties:
@@ -168,9 +708,677 @@ components:
         fetchedAt:
           type: string
           format: date-time
+    RouteStopsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        source:
+          type: string
+        fetchedAt:
+          type: string
+          format: date-time
+        generatedAt:
+          type: string
+          format: date-time
+        route:
+          allOf:
+            - $ref: '#/components/schemas/Route'
+          nullable: true
+        count:
+          type: integer
+        summary:
+          type: object
+          properties:
+            routeId:
+              type: integer
+            routeName:
+              type: string
+              nullable: true
+            routeColor:
+              type: string
+              nullable: true
+            isOpen:
+              type: boolean
+              nullable: true
+            directionCount:
+              type: integer
+            stopCount:
+              type: integer
+            directions:
+              type: array
+              items:
+                type: object
+                properties:
+                  direction:
+                    type: integer
+                  label:
+                    type: string
+                  stopCount:
+                    type: integer
+                  totalDistanceMeters:
+                    type: integer
+                    nullable: true
+                  totalTravelSeconds:
+                    type: integer
+                    nullable: true
+        directions:
+          type: array
+          items:
+            type: object
+            properties:
+              direction:
+                type: integer
+              label:
+                type: string
+              startName:
+                type: string
+                nullable: true
+              endName:
+                type: string
+                nullable: true
+              stopCount:
+                type: integer
+              totalDistanceMeters:
+                type: integer
+                nullable: true
+              totalTravelSeconds:
+                type: integer
+                nullable: true
+              stops:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    routePointId:
+                      type: integer
+                    markerId:
+                      type: integer
+                    name:
+                      type: string
+                    direction:
+                      type: integer
+                    order:
+                      type: integer
+                    sequence:
+                      type: integer
+                    lat:
+                      type: number
+                    lng:
+                      type: number
+                    distanceMeters:
+                      type: integer
+                      nullable: true
+                    travelSecondsFromStart:
+                      type: integer
+                      nullable: true
+                    segmentDistanceMeters:
+                      type: integer
+                      nullable: true
+                    segmentTravelSeconds:
+                      type: integer
+                      nullable: true
+    NearbyStopsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        source:
+          type: string
+        fetchedAt:
+          type: string
+          format: date-time
+        generatedAt:
+          type: string
+          format: date-time
+        count:
+          type: integer
+        summary:
+          type: object
+          properties:
+            origin:
+              type: object
+              properties:
+                lat:
+                  type: number
+                lng:
+                  type: number
+            totalStops:
+              type: integer
+            returnedStops:
+              type: integer
+            maxDistanceMeters:
+              type: integer
+              nullable: true
+            nearestDistanceMeters:
+              type: integer
+              nullable: true
+            routeIds:
+              type: array
+              items:
+                type: integer
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              markerId:
+                type: integer
+              name:
+                type: string
+              lat:
+                type: number
+              lng:
+                type: number
+              distanceMeters:
+                type: integer
+              distanceLabel:
+                type: string
+              routeCount:
+                type: integer
+              routes:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    routeId:
+                      type: integer
+                    routeName:
+                      type: string
+                      nullable: true
+                    routeColor:
+                      type: string
+                      nullable: true
+                    directionStartName:
+                      type: string
+                      nullable: true
+                    directionEndName:
+                      type: string
+                      nullable: true
+                    routePointIds:
+                      type: array
+                      items:
+                        type: integer
+                    directions:
+                      type: array
+                      items:
+                        type: integer
+    NearbyVehiclesResponse:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        count:
+          type: integer
+        summary:
+          type: object
+          properties:
+            origin:
+              type: object
+              properties:
+                lat:
+                  type: number
+                lng:
+                  type: number
+            totalVehicles:
+              type: integer
+            returnedVehicles:
+              type: integer
+            nearestDistanceMeters:
+              type: integer
+              nullable: true
+            routeIds:
+              type: array
+              items:
+                type: integer
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              assetId:
+                type: integer
+              description:
+                type: string
+              routeId:
+                type: integer
+              routeName:
+                type: string
+                nullable: true
+              routeColor:
+                type: string
+                nullable: true
+              lat:
+                type: number
+              lng:
+                type: number
+              distanceMeters:
+                type: integer
+              distanceLabel:
+                type: string
+              speed:
+                type: number
+              status:
+                type: integer
+              msg:
+                type: string
+              lastReportedAt:
+                type: string
+                format: date-time
     EtaResponse:
       type: object
       additionalProperties: true
+    EventosResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        source:
+          type: string
+        count:
+          type: integer
+        summary:
+          type: object
+          properties:
+            categories:
+              type: array
+              items:
+                type: string
+            dateRange:
+              type: object
+              properties:
+                start:
+                  type: string
+                  format: date-time
+                  nullable: true
+                end:
+                  type: string
+                  format: date-time
+                  nullable: true
+            upcomingCount:
+              type: integer
+            featuredPlans:
+              type: array
+              items:
+                $ref: '#/components/schemas/EventosFeaturedPlan'
+            alerts:
+              type: array
+              items:
+                $ref: '#/components/schemas/EventosSummaryAlert'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evento'
+    GastronomiaResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        source:
+          type: string
+        count:
+          type: integer
+        summary:
+          type: object
+          properties:
+            categories:
+              type: array
+              items:
+                type: string
+            categoryBreakdown:
+              type: array
+              items:
+                type: object
+                properties:
+                  category:
+                    type: string
+                  count:
+                    type: integer
+            withImageCount:
+              type: integer
+            sourceDomains:
+              type: array
+              items:
+                type: string
+            featuredPlaces:
+              type: array
+              items:
+                $ref: '#/components/schemas/GastronomiaFeaturedPlace'
+            suggestedRoutes:
+              type: array
+              items:
+                $ref: '#/components/schemas/GastronomiaSuggestedRoute'
+            categorySpotlights:
+              type: array
+              items:
+                $ref: '#/components/schemas/GastronomiaCategorySpotlight'
+            alerts:
+              type: array
+              items:
+                $ref: '#/components/schemas/GastronomiaSummaryAlert'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/GastronomiaPlace'
+    DiscoveryResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        source:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        count:
+          type: integer
+        summary:
+          $ref: '#/components/schemas/DiscoverySummary'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveryFeedItem'
+    RecommendationsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        source:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        count:
+          type: integer
+        summary:
+          $ref: '#/components/schemas/RecommendationsSummary'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecommendationCard'
+    RecommendationsSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        byType:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [service, mobility, plan, food]
+              count:
+                type: integer
+        priorities:
+          type: object
+          properties:
+            high:
+              type: integer
+            medium:
+              type: integer
+            low:
+              type: integer
+        nextBestAction:
+          allOf:
+            - $ref: '#/components/schemas/RecommendationCard'
+          nullable: true
+          description: Card prioritaria ya rankeada para hero, asistente conversacional o superficies compactas.
+        generatedFrom:
+          type: object
+          properties:
+            trackingFetchedAt:
+              type: string
+              format: date-time
+              nullable: true
+            discoveryGeneratedAt:
+              type: string
+              format: date-time
+              nullable: true
+    RecommendationCard:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [service, mobility, plan, food]
+        priority:
+          type: string
+          enum: [high, medium, low]
+        title:
+          type: string
+        message:
+          type: string
+        actionLabel:
+          type: string
+        actionHref:
+          type: string
+        evidence:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        sourceIds:
+          type: array
+          items:
+            type: string
+    DiscoverySummary:
+      type: object
+      properties:
+        types:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveryTypeSummary'
+        categories:
+          type: array
+          items:
+            type: string
+        dateRange:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+              nullable: true
+            end:
+              type: string
+              format: date-time
+              nullable: true
+        withImageCount:
+          type: integer
+        sourceDomains:
+          type: array
+          items:
+            type: string
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoverySummaryAlert'
+    EventosFeaturedPlan:
+      type: object
+      properties:
+        id:
+          type: string
+        eyebrow:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        meta:
+          type: string
+        eventIds:
+          type: array
+          items:
+            type: string
+        primaryEventId:
+          type: string
+        primaryEventTitle:
+          type: string
+        primaryEventHref:
+          type: string
+          nullable: true
+        categoryLabels:
+          type: array
+          items:
+            type: string
+    GastronomiaFeaturedPlace:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        sourceUrl:
+          type: string
+          nullable: true
+        reason:
+          type: string
+        actionLabel:
+          type: string
+        actionHref:
+          type: string
+    GastronomiaSuggestedRoute:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        placeIds:
+          type: array
+          items:
+            type: string
+        placeTitles:
+          type: array
+          items:
+            type: string
+        count:
+          type: integer
+        withImageCount:
+          type: integer
+        actionLabel:
+          type: string
+        actionHref:
+          type: string
+    GastronomiaCategorySpotlight:
+      type: object
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        count:
+          type: integer
+        withImageCount:
+          type: integer
+        leadingPlaceId:
+          type: string
+        leadingPlaceTitle:
+          type: string
+        leadingPlaceSummary:
+          type: string
+        leadingPlaceImageUrl:
+          type: string
+          nullable: true
+        categories:
+          type: array
+          items:
+            type: string
+        actionLabel:
+          type: string
+        actionHref:
+          type: string
+    GastronomiaSummaryAlert:
+      type: object
+      properties:
+        id:
+          type: string
+        dedupeKey:
+          type: string
+        scope:
+          type: string
+          enum: [category, combo, visual]
+        severity:
+          type: string
+          enum: [info, warning]
+        title:
+          type: string
+        message:
+          type: string
+        count:
+          type: integer
+        categories:
+          type: array
+          items:
+            type: string
+        withImageCount:
+          type: integer
+    DiscoveryTypeSummary:
+      type: object
+      properties:
+        type:
+          type: string
+        count:
+          type: integer
+    DiscoverySummaryAlert:
+      type: object
+      properties:
+        id:
+          type: string
+        dedupeKey:
+          type: string
+        scope:
+          type: string
+          enum: [day, mix, food]
+        severity:
+          type: string
+          enum: [info, warning]
+        title:
+          type: string
+        message:
+          type: string
+        date:
+          type: string
+          format: date
+          nullable: true
+        count:
+          type: integer
+        eventCount:
+          type: integer
+        foodCount:
+          type: integer
+        categories:
+          type: array
+          items:
+            type: string
     FeedbackRequest:
       type: object
       properties:
@@ -304,3 +1512,631 @@ components:
         lng:
           type: number
           nullable: true
+    TrackingStop:
+      type: object
+      properties:
+        routePointId:
+          type: integer
+        markerId:
+          type: integer
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        lat:
+          type: number
+          nullable: true
+        lng:
+          type: number
+          nullable: true
+        order:
+          type: integer
+        seconds:
+          type: number
+    TrackingBounds:
+      type: object
+      properties:
+        minLat:
+          type: number
+        maxLat:
+          type: number
+        minLng:
+          type: number
+        maxLng:
+          type: number
+    TrackingFreshnessBuckets:
+      type: object
+      properties:
+        live:
+          type: integer
+        delayed:
+          type: integer
+        offline:
+          type: integer
+        unknown:
+          type: integer
+    TrackingTelemetryAgeSummary:
+      type: object
+      properties:
+        knownVehicleCount:
+          type: integer
+        unknownVehicleCount:
+          type: integer
+        newestAgeSeconds:
+          type: integer
+          nullable: true
+        oldestAgeSeconds:
+          type: integer
+          nullable: true
+        medianAgeSeconds:
+          type: integer
+          nullable: true
+        p90AgeSeconds:
+          type: integer
+          nullable: true
+    TrackingDataQualitySummary:
+      type: object
+      properties:
+        totalVehicles:
+          type: integer
+        completeVehicleCount:
+          type: integer
+        qualityPercent:
+          type: integer
+        missingCoordinateVehicles:
+          type: integer
+        missingNextStopVehicles:
+          type: integer
+        missingPreviousStopVehicles:
+          type: integer
+        missingRouteNameVehicles:
+          type: integer
+        unknownFreshnessVehicles:
+          type: integer
+        unknownStatusVehicles:
+          type: integer
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackingDataQualityIssue'
+    TrackingDataQualityIssue:
+      type: object
+      properties:
+        id:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        title:
+          type: string
+        message:
+          type: string
+        count:
+          type: integer
+        affectedAssetIds:
+          type: array
+          items:
+            type: integer
+    TrackingServiceHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, offline]
+        coveragePercent:
+          type: integer
+        liveCoveragePercent:
+          type: integer
+        routeHealth:
+          type: object
+          properties:
+            operational:
+              type: integer
+            delayed:
+              type: integer
+            offline:
+              type: integer
+            no-signal:
+              type: integer
+    EventosSummaryAlert:
+      type: object
+      properties:
+        id:
+          type: string
+        dedupeKey:
+          type: string
+        scope:
+          type: string
+          enum: [day, weekend]
+        severity:
+          type: string
+          enum: [info, warning]
+        title:
+          type: string
+        message:
+          type: string
+        date:
+          type: string
+          format: date
+          nullable: true
+        count:
+          type: integer
+        categories:
+          type: array
+          items:
+            type: string
+        venue:
+          type: string
+          nullable: true
+    CriollosNotification:
+      type: object
+      required:
+        [
+          id,
+          dedupeKey,
+          source,
+          severity,
+          title,
+          body,
+          actionLabel,
+          actionHref,
+          tags,
+        ]
+      properties:
+        id:
+          type: string
+        dedupeKey:
+          type: string
+        source:
+          type: string
+          enum: [tracking, eventos, discovery, gastronomia]
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        title:
+          type: string
+        body:
+          type: string
+        actionLabel:
+          type: string
+        actionHref:
+          type: string
+        scheduledFor:
+          type: string
+          format: date
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+    NotificationsResponse:
+      type: object
+      required: [status, generatedAt, cursor, count, unreadCount, summary, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        generatedAt:
+          type: string
+          format: date-time
+        cursor:
+          type: string
+        count:
+          type: integer
+        unreadCount:
+          type: integer
+        summary:
+          type: object
+          properties:
+            bySource:
+              type: array
+              items:
+                type: object
+                properties:
+                  source:
+                    type: string
+                    enum: [tracking, eventos, discovery, gastronomia]
+                  count:
+                    type: integer
+            bySeverity:
+              type: object
+              properties:
+                info:
+                  type: integer
+                warning:
+                  type: integer
+                critical:
+                  type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CriollosNotification'
+    TrackingSummaryAlert:
+      type: object
+      properties:
+        id:
+          type: string
+        dedupeKey:
+          type: string
+        scope:
+          type: string
+          enum: [service, route]
+        severity:
+          type: string
+          enum: [warning, critical]
+        title:
+          type: string
+        message:
+          type: string
+        routeId:
+          type: integer
+          nullable: true
+        routeName:
+          type: string
+          nullable: true
+        healthLabel:
+          type: string
+          enum: [operational, delayed, offline, no-signal]
+          nullable: true
+        coveragePercent:
+          type: integer
+          nullable: true
+        liveVehicles:
+          type: integer
+          nullable: true
+        totalVehicles:
+          type: integer
+          nullable: true
+        lastReportedAt:
+          type: string
+          format: date-time
+          nullable: true
+    TrackingRouteSummary:
+      type: object
+      properties:
+        routeId:
+          type: integer
+        routeName:
+          type: string
+          nullable: true
+        routeColor:
+          type: string
+          nullable: true
+        directionStartName:
+          type: string
+          nullable: true
+        directionEndName:
+          type: string
+          nullable: true
+        totalVehicles:
+          type: integer
+        liveVehicles:
+          type: integer
+        staleVehicles:
+          type: integer
+        unknownVehicles:
+          type: integer
+        movingVehicles:
+          type: integer
+        stoppedVehicles:
+          type: integer
+        idleVehicles:
+          type: integer
+        vehicleLabels:
+          type: array
+          items:
+            type: string
+        nextStops:
+          type: array
+          items:
+            type: string
+        lastReportedAt:
+          type: string
+          format: date-time
+          nullable: true
+        leadVehicle:
+          allOf:
+            - $ref: '#/components/schemas/TrackingRouteLeadVehicle'
+          nullable: true
+        telemetry:
+          $ref: '#/components/schemas/TrackingTelemetryAgeSummary'
+        healthLabel:
+          type: string
+          enum: [operational, delayed, offline, no-signal]
+        coveragePercent:
+          type: integer
+    TrackingRouteLeadVehicle:
+      type: object
+      properties:
+        assetId:
+          type: integer
+        label:
+          type: string
+        statusLabel:
+          type: string
+        freshnessLabel:
+          type: string
+        freshnessSeconds:
+          type: integer
+          nullable: true
+        when:
+          type: string
+        nextStopName:
+          type: string
+          nullable: true
+        nextStopEtaSeconds:
+          type: integer
+          nullable: true
+        previousStopName:
+          type: string
+          nullable: true
+        message:
+          type: string
+    TrackingUpcomingStopVehicle:
+      type: object
+      properties:
+        assetId:
+          type: integer
+        label:
+          type: string
+        routeId:
+          type: integer
+        routeName:
+          type: string
+          nullable: true
+        routeColor:
+          type: string
+          nullable: true
+        freshnessLabel:
+          type: string
+        nextStopEtaSeconds:
+          type: integer
+          nullable: true
+    TrackingUpcomingStopSummary:
+      type: object
+      properties:
+        stopKey:
+          type: string
+        routePointId:
+          type: integer
+        markerId:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        lat:
+          type: number
+          nullable: true
+        lng:
+          type: number
+          nullable: true
+        arrivalCount:
+          type: integer
+        liveVehicleCount:
+          type: integer
+        routeIds:
+          type: array
+          items:
+            type: integer
+        routeNames:
+          type: array
+          items:
+            type: string
+        nextArrivalEtaSeconds:
+          type: integer
+          nullable: true
+        vehicles:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackingUpcomingStopVehicle'
+    TrackingVehicle:
+      type: object
+      properties:
+        assetId:
+          type: integer
+        label:
+          type: string
+        driverId:
+          type: integer
+        routeId:
+          type: integer
+        routeName:
+          type: string
+          nullable: true
+        routeColor:
+          type: string
+          nullable: true
+        directionStartName:
+          type: string
+          nullable: true
+        directionEndName:
+          type: string
+          nullable: true
+        status:
+          type: integer
+        statusLabel:
+          type: string
+        message:
+          type: string
+        speed:
+          type: number
+        when:
+          type: string
+        freshnessSeconds:
+          type: integer
+          nullable: true
+        freshnessLabel:
+          type: string
+        lat:
+          type: number
+          nullable: true
+        lng:
+          type: number
+          nullable: true
+        nextStop:
+          $ref: '#/components/schemas/TrackingStop'
+        nextStopEtaSeconds:
+          type: integer
+          nullable: true
+        previousStop:
+          $ref: '#/components/schemas/TrackingStop'
+    Evento:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+        description:
+          type: string
+        venue:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        sourceUrl:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        rawDate:
+          type: string
+          nullable: true
+    GastronomiaPlace:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        sourceUrl:
+          type: string
+          nullable: true
+    DiscoveryFeedItem:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [evento, gastronomia, info]
+        id:
+          type: string
+        title:
+          type: string
+        subtitle:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        link:
+          type: string
+          nullable: true
+        date:
+          type: string
+          nullable: true
+        category:
+          type: string
+        tag:
+          type: string
+          nullable: true
+    SearchResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        query:
+          type: string
+        count:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+        suggestions:
+          type: array
+          items:
+            type: string
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, offline]
+        version:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        dependencies:
+          type: object
+          properties:
+            transport:
+              $ref: '#/components/schemas/DependencyHealth'
+            agenda:
+              $ref: '#/components/schemas/DependencyHealth'
+            gastronomia:
+              $ref: '#/components/schemas/DependencyHealth'
+    DependencyHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, offline]
+        lastSuccessAt:
+          type: string
+          format: date-time
+          nullable: true
+        latencyMs:
+          type: integer
+          nullable: true
+        message:
+          type: string
+          nullable: true
+    SearchResult:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [route, stop, evento, gastronomia]
+        id:
+          type: string
+        title:
+          type: string
+        subtitle:
+          type: string
+        description:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        link:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
