@@ -55,8 +55,8 @@ describe('Criollos API Endpoints (Live Check)', () => {
     }
   })
 
-  it('GET /api/v1/bootstrap should return 403 with invalid API Key', async () => {
-    const response = await fetchWithRateLimitRetry('/api/v1/bootstrap', {
+  it('GET /api/v1/routes should return 403 with invalid API Key', async () => {
+    const response = await fetchWithRateLimitRetry('/api/v1/routes', {
       'x-api-key': 'invalid-key',
     })
 
