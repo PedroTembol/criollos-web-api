@@ -1,5 +1,3 @@
-import { getDistanceMeters } from './nearbyStops'
-
 export interface NearbyStop {
   markerId: number
   name: string
