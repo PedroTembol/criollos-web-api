@@ -10,6 +10,7 @@ export type AppConfig = {
   cacheTtlPositions: number
   cacheTtlCatalog: number
   cacheTtlBootstrap: number
+  cacheTtlBootstrapStale: number
 }
 
 function toNumber(value: string, fallback: number) {
@@ -75,6 +76,14 @@ export function getAppConfig(): AppConfig {
         config.cacheTtlBootstrap || config.CRIOLLOS_CACHE_TTL_BOOTSTRAP || '300'
       ),
       300
+    ),
+    cacheTtlBootstrapStale: toNumber(
+      String(
+        config.cacheTtlBootstrapStale ||
+          config.CRIOLLOS_CACHE_TTL_BOOTSTRAP_STALE ||
+          '86400'
+      ),
+      86400
     ),
   }
 }

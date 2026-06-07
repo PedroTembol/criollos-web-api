@@ -30,6 +30,7 @@ Endpoints principales:
 ### Variables de entorno
 
 - `UPSTREAM_BASE_URL` (default: `https://taapi.caribetrack.com/`)
+- `CACHE_TTL_BOOTSTRAP_STALE` (default: `86400`, last-known-good fallback)
 - `IDCLIENT` (default: `151`)
 - `DEVICEID` (default: `server`)
 - `API_KEYS` (comma-separated, opcional)

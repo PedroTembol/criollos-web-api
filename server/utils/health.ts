@@ -28,6 +28,15 @@ async function checkTransportHealth(): Promise<DependencyHealth> {
   try {
     // We try to get data, if it's cached it's fine, if not it will try upstream
     const data = await getBootstrapData()
+    if (data.stale) {
+      return {
+        status: 'degraded',
+        lastSuccessAt: data.fetchedAt,
+        latencyMs: Date.now() - start,
+        message: data.staleReason || 'Serving last-known-good transport data',
+      }
+    }
+
     return {
       status: data.positions.length > 0 ? 'healthy' : 'degraded',
       lastSuccessAt: data.fetchedAt,
