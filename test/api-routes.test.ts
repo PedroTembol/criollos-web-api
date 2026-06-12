@@ -19,6 +19,7 @@ describe('public API route registry', () => {
       '/search',
       '/proactive-recommendations',
       '/notifications',
+      '/assistant',
       '/feedback',
       '/health',
     ])

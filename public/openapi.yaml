@@ -128,6 +128,101 @@ paths:
                 $ref: '#/components/schemas/NotificationsResponse'
         '304':
           description: El feed no cambió para el ETag o fecha condicional enviada.
+  /assistant:
+    get:
+      summary: Asistente conversacional determinístico de Criollos
+      description: Interpreta preguntas naturales sobre trolley, cercanía, eventos y gastronomía sin depender de un modelo externo.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: lat
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: -90
+            maximum: 90
+        - name: lng
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: -180
+            maximum: 180
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+      responses:
+        '200':
+          description: Respuesta breve con intención, acciones y evidencia.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [
+                    status,
+                    question,
+                    intent,
+                    answer,
+                    actions,
+                    evidence,
+                    needsLocation,
+                    generatedAt,
+                    degraded,
+                  ]
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  question:
+                    type: string
+                  intent:
+                    type: string
+                    enum: [nearby, trolley, events, food, search]
+                  answer:
+                    type: string
+                  needsLocation:
+                    type: boolean
+                  generatedAt:
+                    type: string
+                    format: date-time
+                  degraded:
+                    type: boolean
+                    description: Indica que una fuente no estuvo disponible y la respuesta se degradó de forma segura.
+                  actions:
+                    type: array
+                    items:
+                      type: object
+                      required: [label, href, type]
+                      properties:
+                        label: { type: string }
+                        href: { type: string }
+                        type: { type: string, enum: [map, details, search] }
+                  evidence:
+                    type: array
+                    items:
+                      type: object
+                      required: [type, id, title, subtitle]
+                      properties:
+                        type:
+                          {
+                            type: string,
+                            enum: [route, stop, evento, gastronomia, vehicle],
+                          }
+                        id: { type: string }
+                        title: { type: string }
+                        subtitle: { type: string }
+                        metadata: { type: object, additionalProperties: true }
+        '400':
+          description: El parámetro `q` es requerido.
   /tracking:
     get:
       summary: Snapshot enriquecido de trolleys

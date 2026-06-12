@@ -13,6 +13,7 @@ export const publicApiRoutes = [
   '/search',
   '/proactive-recommendations',
   '/notifications',
+  '/assistant',
   '/feedback',
   '/health',
 ] as const
