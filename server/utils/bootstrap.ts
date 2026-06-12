@@ -3,6 +3,8 @@ import { getCachedJson, setCachedJson, withCacheLock } from './cache'
 import { fetchUpstreamJson } from './upstream'
 import { normalizeGetAll, BootstrapData } from './normalize'
 
+const BOOTSTRAP_UPSTREAM_TIMEOUT_MS = 5000
+
 export type BootstrapResponse = BootstrapData & {
   fetchedAt: string
   stale?: boolean
@@ -46,10 +48,14 @@ export async function getBootstrapData(
 
   return withCacheLock(cacheKey, async () => {
     try {
-      const data = await fetchUpstreamJson<unknown[]>('GetAll', {
-        IDCLIENT: config.idClient,
-        IDMARKER: idMarker ?? undefined,
-      })
+      const data = await fetchUpstreamJson<unknown[]>(
+        'GetAll',
+        {
+          IDCLIENT: config.idClient,
+          IDMARKER: idMarker ?? undefined,
+        },
+        BOOTSTRAP_UPSTREAM_TIMEOUT_MS
+      )
 
       const normalized = normalizeGetAll(data)
       const response: BootstrapResponse = {
