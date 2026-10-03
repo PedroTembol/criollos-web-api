@@ -1,17 +1,19 @@
-import { defineEventHandler, getQuery, setHeader, type H3Event } from 'h3'
 import {
-  getCachedJson,
-  setCachedJson,
-  withCacheLock,
-} from '../../../utils/cache'
+  defineEventHandler,
+  getQuery,
+  setHeader,
+  createError,
+  type H3Event,
+} from 'h3'
 import { buildEventosCalendar } from '../../../utils/calendar'
 import {
   filterEventosFeed,
   type EventosFeedFilters,
 } from '../../../utils/eventos'
-import { scrapeEventos, type Evento } from '../../../utils/scraper'
+import { getEventosFeed } from '../../../utils/data'
+import { getFeedMetadata, feedCacheMaxAge } from '../../../utils/feedMetadata'
+import { applyConditionalCache } from '../../../utils/httpCache'
 
-const CACHE_KEY = 'eventos:visitacaguas'
 const CACHE_TTL_SECONDS = 60 * 60
 
 function parseListParam(value: string | string[] | undefined): string[] {
@@ -37,27 +39,20 @@ function parseFilters(event: H3Event): EventosFeedFilters {
   }
 }
 
-async function getEventos(): Promise<Evento[]> {
-  const cached = await getCachedJson<Evento[]>(CACHE_KEY)
-  if (cached) return cached
-
-  return withCacheLock(CACHE_KEY, async () => {
-    const fromCache = await getCachedJson<Evento[]>(CACHE_KEY)
-    if (fromCache) return fromCache
-
-    const scraped = await scrapeEventos()
-    await setCachedJson(CACHE_KEY, scraped, CACHE_TTL_SECONDS)
-    return scraped
-  })
-}
-
 export default defineEventHandler(async (event) => {
   const filters = parseFilters(event)
-  const eventos = await getEventos()
-  const filtered = filterEventosFeed(eventos, filters)
+  const snapshot = await getEventosFeed()
+  const metadata = getFeedMetadata(snapshot)
+  if (metadata.state === 'unavailable') {
+    throw createError({
+      statusCode: 503,
+      statusMessage: 'Agenda source unavailable',
+    })
+  }
+  const filtered = filterEventosFeed(snapshot.data, filters)
   const datedEvents = filtered.data.filter((item) => Boolean(item.publishedAt))
   const queryString = getQuery(event)
-  const currentUrl = new URL(event.path, 'https://criollos.pr')
+  const currentUrl = new URL(event.path.split('?')[0], 'https://criollos.app')
 
   for (const [key, value] of Object.entries(queryString)) {
     if (Array.isArray(value)) {
@@ -70,6 +65,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const calendar = buildEventosCalendar(datedEvents, {
+    generatedAt: new Date(snapshot.fetchedAt!),
     calendarName: 'Criollos · Agenda Cultural de Caguas',
     calendarDescription:
       'Export filtrado de la agenda cultural pública de Caguas.',
@@ -82,7 +78,15 @@ export default defineEventHandler(async (event) => {
     'content-disposition',
     'attachment; filename="criollos-eventos-caguas.ics"'
   )
-  setHeader(event, 'cache-control', `public, max-age=${CACHE_TTL_SECONDS}`)
+  setHeader(event, 'x-criollos-source-state', metadata.state)
+  if (
+    applyConditionalCache(event, {
+      maxAgeSeconds: feedCacheMaxAge(metadata, CACHE_TTL_SECONDS),
+      payload: calendar,
+      lastModified: snapshot.fetchedAt,
+    })
+  )
+    return null
 
   return calendar
 })

@@ -78,11 +78,14 @@ export default defineEventHandler(async (event) => {
     Number.isFinite(idMarker) ? idMarker : null
   )
   const snapshot = buildTrackingSnapshot(data, data.fetchedAt)
-  const filtered = filterTrackingSnapshot(snapshot, parseTrackingFilters(event))
+  const filtered = {
+    ...filterTrackingSnapshot(snapshot, parseTrackingFilters(event)),
+    ...(data.stale ? { stale: true, staleReason: data.staleReason } : {}),
+  }
 
   if (
     applyConditionalCache(event, {
-      maxAgeSeconds: config.cacheTtlBootstrap,
+      maxAgeSeconds: data.stale ? 30 : config.cacheTtlPositions,
       payload: filtered,
       lastModified: filtered.fetchedAt,
     })

@@ -1,14 +1,10 @@
-import { devLog, devError } from '../../utils/logging'
-import {
-  defineEventHandler,
-  getQuery,
-  setResponseHeader,
-  createError,
-} from 'h3'
+import { devError } from '../../utils/logging'
+import { defineEventHandler, getQuery, setResponseHeader } from 'h3'
 import { getAppConfig } from '../../utils/config'
 import { getCachedJson, setCachedJson, withCacheLock } from '../../utils/cache'
 import { fetchUpstreamJson } from '../../utils/upstream'
 import { getBootstrapData } from '../../utils/bootstrap'
+import { parseEtaQuery, resolveEtaPath } from '../../utils/etaQuery'
 
 type EtaResponse = {
   total_seconds?: number
@@ -17,58 +13,23 @@ type EtaResponse = {
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const assetId = query.assetId ? Number(query.assetId) : undefined
-  const stopId = query.stopId ? Number(query.stopId) : undefined
+  const parsed = parseEtaQuery(query)
+  const { assetId, stopId, time } = parsed
   const config = getAppConfig()
 
-  let latlngs = query.latlngs ? String(query.latlngs) : ''
-  const time = query.time ? Number(query.time) : undefined
+  let latlngs = parsed.latlngs
 
   // Autocompletar latlngs si faltan pero tenemos asset + stop
   if (!latlngs && assetId && stopId) {
     const data = await getBootstrapData()
-    // A veces el assetId del app es el description en el API raw
-    const assetStr = String(assetId)
-    let vehicle = data.positions.find((p) => String(p.assetId) === assetStr)
-    if (!vehicle) {
-      const assetDef = data.assets.find(
-        (a) => String(a.id) === assetStr || a.description === assetStr
-      )
-      if (assetDef) {
-        vehicle = data.positions.find((p) => p.assetId === assetDef.id)
-      }
-    }
-
-    // Busqueda fallback por description directa si nada funcionó
-    if (!vehicle) {
-      const assetDef = data.assets.find((a) => a.description === assetStr)
-      if (assetDef) {
-        vehicle = data.positions.find((p) => p.assetId === assetDef.id)
-      }
-    }
-
-    const stop = data.routePoints.find((rp) => rp.id === stopId)
-
-    if (vehicle && stop && vehicle.lat && vehicle.lng) {
-      latlngs = `${vehicle.lat},${vehicle.lng}|${stop.lat / 1000000},${stop.lng / 1000000}`
-    } else {
-      // Intento final: buscar cualquier trolley cercano en la misma ruta del stop
-      if (stop) {
-        const nearbyVehicle = data.positions.find(
-          (p) => p.routeId === stop.routeId && p.lat && p.lng
-        )
-        if (nearbyVehicle) {
-          latlngs = `${nearbyVehicle.lat},${nearbyVehicle.lng}|${stop.lat / 1000000},${stop.lng / 1000000}`
-        }
-      }
-    }
+    latlngs = resolveEtaPath(data, assetId, stopId)
   }
 
   if (!latlngs) {
-    // Si no pudimos calcular path, devolvemos -1 silencioso para no romper el app
+    setResponseHeader(event, 'Cache-Control', 'no-store')
     return {
       total_seconds: -1,
-      error: `Path computation failed (assetId=${assetId}, stopId=${stopId})`,
+      error: 'Recent vehicle location or stop unavailable',
     }
   }
 
@@ -85,11 +46,24 @@ export default defineEventHandler(async (event) => {
 
   const response = await withCacheLock(cacheKey, async () => {
     try {
-      const data = await fetchUpstreamJson<EtaResponse>('GetGoogleETA', {
+      const upstream = await fetchUpstreamJson<EtaResponse>('GetGoogleETA', {
         IDCLIENT: config.idClient,
         latlngs,
         time: Number.isFinite(time) ? time : undefined,
       })
+      const totalSeconds = Number(upstream.total_seconds)
+      if (
+        upstream.total_seconds === undefined ||
+        !Number.isFinite(totalSeconds) ||
+        totalSeconds < 0
+      )
+        return { total_seconds: -1, error: 'ETA unavailable' }
+      const data = {
+        ...upstream,
+        total_seconds: totalSeconds,
+        estimateKind: 'point-to-point',
+        fetchedAt: new Date().toISOString(),
+      }
       await setCachedJson(cacheKey, data, config.cacheTtlPositions)
       return data
     } catch (e) {
@@ -101,7 +75,9 @@ export default defineEventHandler(async (event) => {
   setResponseHeader(
     event,
     'Cache-Control',
-    `public, max-age=${config.cacheTtlPositions}`
+    response.total_seconds != null && response.total_seconds >= 0
+      ? `public, max-age=${config.cacheTtlPositions}`
+      : 'no-store'
   )
   return response
 })

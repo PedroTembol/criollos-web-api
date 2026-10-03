@@ -54,14 +54,15 @@ export default defineEventHandler(async (event) => {
   const nearbyStops = buildNearbyStops(data, options)
   const payload = {
     status: 'success',
-    source: 'live',
+    source: data.stale ? 'stale-cache' : 'upstream',
+    ...(data.stale ? { stale: true, staleReason: data.staleReason } : {}),
     fetchedAt: data.fetchedAt,
     ...nearbyStops,
   }
 
   if (
     applyConditionalCache(event, {
-      maxAgeSeconds: config.cacheTtlBootstrap,
+      maxAgeSeconds: data.stale ? 30 : config.cacheTtlBootstrap,
       payload,
       lastModified: data.fetchedAt,
     })

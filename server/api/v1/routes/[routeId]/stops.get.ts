@@ -33,14 +33,15 @@ export default defineEventHandler(async (event) => {
   const routeStops = buildRouteStops(data, { routeId })
   const payload = {
     status: 'success',
-    source: 'live',
+    source: data.stale ? 'stale-cache' : 'upstream',
+    ...(data.stale ? { stale: true, staleReason: data.staleReason } : {}),
     fetchedAt: data.fetchedAt,
     ...routeStops,
   }
 
   if (
     applyConditionalCache(event, {
-      maxAgeSeconds: config.cacheTtlCatalog,
+      maxAgeSeconds: data.stale ? 30 : config.cacheTtlCatalog,
       payload,
       lastModified: data.fetchedAt,
     })

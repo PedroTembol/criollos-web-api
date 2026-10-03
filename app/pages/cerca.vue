@@ -79,7 +79,8 @@
           </div>
           <button
             @click="requestLocation"
-            class="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0038A8] px-6 py-4 text-sm font-black uppercase tracking-widest text-white transition hover:bg-[#002a7f] shadow-lg shadow-blue-200"
+            :disabled="loadingLocation"
+            class="disabled:opacity-50 inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0038A8] px-6 py-4 text-sm font-black uppercase tracking-widest text-white transition hover:bg-[#002a7f] shadow-lg shadow-blue-200"
           >
             <span class="text-xl">📍</span>
             {{ locationStatus }}
@@ -141,8 +142,26 @@
         </article>
       </section>
 
+      <p v-if="locationError" role="alert" class="mb-6 text-amber-800">
+        {{ locationError }}
+      </p>
+      <p
+        v-if="coords && (feed?.stale || (error && feed))"
+        role="status"
+        class="mb-6 text-amber-800"
+      >
+        Mostrando la lectura anterior; no se pudo actualizar la fuente.
+      </p>
+      <p v-if="coords && feed?.fetchedAt" class="mb-4 text-sm text-slate-500">
+        Catálogo consultado:
+        {{
+          new Date(feed.fetchedAt).toLocaleString('es-PR', {
+            timeZone: 'America/Puerto_Rico',
+          })
+        }}
+      </p>
       <div
-        v-if="pending"
+        v-if="pending && !feed"
         class="flex flex-col items-center justify-center py-20"
       >
         <div
@@ -154,7 +173,7 @@
       </div>
 
       <div
-        v-else-if="error"
+        v-else-if="error && !feed"
         class="rounded-3xl border border-red-100 bg-red-50 p-8 text-center"
       >
         <span class="mb-4 block text-4xl">⚠️</span>
@@ -173,11 +192,21 @@
       </div>
 
       <div
-        v-else-if="coords"
+        v-else-if="coords && feed"
         id="nearby-results"
         class="grid grid-cols-1 gap-6"
         aria-live="polite"
       >
+        <p v-if="!feed?.data?.length" role="status" class="text-slate-600">
+          No hay paradas disponibles para esta ubicación.
+        </p>
+        <button
+          @click="retryNearby"
+          :disabled="pending"
+          class="justify-self-start rounded-full bg-[#0038A8] px-5 py-2 font-bold text-white disabled:opacity-50"
+        >
+          {{ pending ? 'Actualizando…' : 'Actualizar paradas' }}
+        </button>
         <article
           v-for="stop in feed?.data"
           :key="stop.markerId"
@@ -219,6 +248,11 @@
               de trolley.
             </p>
 
+            <NuxtLink
+              :to="`/transporte?stopId=${stop.markerId}`"
+              class="mb-3 font-bold text-[#0038A8] underline"
+              >Ver parada y rutas</NuxtLink
+            >
             <div class="flex flex-wrap gap-3">
               <div
                 v-for="route in stop.routes"
@@ -288,14 +322,12 @@ import {
   getUserLocation,
 } from '../utils/nearbyStops'
 
-const config = useRuntimeConfig()
-const apiKey =
-  config.public.apiKey ||
-  '118884a9d701e5b0ab4f44322568a3c548fb3efb9f22b1b64f8c446224224c2b'
-
 const coords = ref(null)
 const locationStatus = ref('Actualizar ubicación')
 const loadingLocation = ref(false)
+const locationError = ref('')
+let locationGeneration = 0
+let locationTimer
 
 const queryParams = computed(() => {
   if (!coords.value) return null
@@ -307,17 +339,40 @@ const queryParams = computed(() => {
 })
 
 const {
-  data: feed,
+  data: rawFeed,
   pending,
   error,
   refresh,
+  clear,
 } = await useFetch('/api/v1/stops/nearby', {
-  headers: {
-    'x-api-key': apiKey,
-  },
   query: queryParams,
-  watch: [queryParams],
+  watch: false,
   immediate: false,
+})
+
+const previousNearby = shallowRef(null)
+const matchesOrigin = (value) =>
+  !!coords.value &&
+  value?.summary?.origin?.lat === coords.value.lat &&
+  value?.summary?.origin?.lng === coords.value.lng
+watch(
+  rawFeed,
+  (value) => {
+    if (matchesOrigin(value)) previousNearby.value = value
+  },
+  { immediate: true }
+)
+const feed = computed(() => {
+  if (matchesOrigin(rawFeed.value)) return rawFeed.value
+  return matchesOrigin(previousNearby.value) ? previousNearby.value : null
+})
+
+const retryNearby = () => {
+  if (coords.value && !pending.value) refresh()
+}
+onBeforeUnmount(() => {
+  locationGeneration++
+  clearTimeout(locationTimer)
 })
 
 const summaryCards = computed(() =>
@@ -325,27 +380,40 @@ const summaryCards = computed(() =>
 )
 
 const requestLocation = async () => {
+  if (loadingLocation.value) return
+  const generation = ++locationGeneration
+  locationError.value = ''
   loadingLocation.value = true
   locationStatus.value = 'Localizando...'
   try {
     const loc = await getUserLocation()
+    if (generation !== locationGeneration) return
     coords.value = loc
+    await nextTick()
+    await refresh()
+    if (generation !== locationGeneration) return
     locationStatus.value = 'Ubicación actualizada'
-    setTimeout(() => {
+    clearTimeout(locationTimer)
+    locationTimer = setTimeout(() => {
       locationStatus.value = 'Actualizar ubicación'
     }, 3000)
   } catch (err) {
-    console.error('Location error:', err)
+    if (generation !== locationGeneration) return
     locationStatus.value = 'Error al localizar'
-    alert(
-      'No pudimos obtener tu ubicación. Por favor, asegúrate de dar permisos de GPS a la página.'
-    )
+    locationError.value =
+      'No pudimos obtener tu ubicación. Revisa los permisos de ubicación del navegador y reintenta.'
   } finally {
-    loadingLocation.value = false
+    if (generation === locationGeneration) loadingLocation.value = false
   }
 }
 
 const clearLocation = () => {
+  locationGeneration++
+  clearTimeout(locationTimer)
+  loadingLocation.value = false
+  locationError.value = ''
+  clear()
+  previousNearby.value = null
   coords.value = null
   locationStatus.value = 'Actualizar ubicación'
 }

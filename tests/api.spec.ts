@@ -1,75 +1,56 @@
 import { describe, it, expect } from 'vitest'
 
-const apiKey =
-  '118884a9d701e5b0ab4f44322568a3c548fb3efb9f22b1b64f8c446224224c2b'
-const baseUrl = 'https://criollos.app'
+// Live checks are opt-in and never part of test, test:local or CI.
+const enabled = process.env.CRIOLLOS_LIVE_TESTS === '1'
+const baseUrl = process.env.CRIOLLOS_TEST_BASE_URL
+const apiKey = process.env.CRIOLLOS_TEST_API_KEY
 
-async function sleep(ms: number) {
-  await new Promise((resolve) => setTimeout(resolve, ms))
+async function get(path: string, authenticated = false): Promise<Response> {
+  if (!baseUrl) throw new Error('Set CRIOLLOS_TEST_BASE_URL for live checks')
+  const url = new URL(path, baseUrl)
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (authenticated && apiKey) headers['x-api-key'] = apiKey
+  return fetch(url, { headers, signal: AbortSignal.timeout(10000) })
 }
 
-async function fetchWithRateLimitRetry(
-  path: string,
-  headers?: HeadersInit,
-  attempts = 3
-): Promise<Response> {
-  let lastResponse: Response | null = null
-
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const response = await fetch(`${baseUrl}${path}`, { headers })
-    lastResponse = response
-
-    if (response.status !== 429) {
-      return response
-    }
-
-    const retryAfterHeader = response.headers.get('retry-after')
-    const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : NaN
-    const waitMs = Number.isFinite(retryAfterSeconds)
-      ? retryAfterSeconds * 1000
-      : 1000 * (attempt + 1)
-
-    if (attempt < attempts - 1) {
-      await sleep(waitMs)
-    }
-  }
-
-  return lastResponse as Response
+function expectJson(response: Response) {
+  expect(response.status).toBe(200)
+  expect(response.headers.get('content-type')).toContain('application/json')
 }
 
-function expectSuccessOrRateLimited(response: Response) {
-  expect([200, 429]).toContain(response.status)
-}
-
-describe('Criollos API Endpoints (Live Check)', () => {
-  it('GET /api/v1/bootstrap should return data or an explicit rate limit', async () => {
-    const response = await fetchWithRateLimitRetry('/api/v1/bootstrap', {
-      'x-api-key': apiKey,
-    })
-
-    expectSuccessOrRateLimited(response)
-
-    if (response.status === 200) {
+describe.skipIf(!enabled)(
+  'Criollos API endpoints (opt-in live GET only)',
+  () => {
+    it('health returns dependency status', async () => {
+      const response = await get('/api/v1/health')
+      expectJson(response)
       const data = await response.json()
-      expect(data.routes).toBeDefined()
-    }
-  })
-
-  it('GET /api/v1/routes should return 403 with invalid API Key', async () => {
-    const response = await fetchWithRateLimitRetry('/api/v1/routes', {
-      'x-api-key': 'invalid-key',
+      expect(['healthy', 'degraded', 'offline']).toContain(data.status)
+      expect(data.dependencies).toBeDefined()
     })
 
-    expect(response.status).toBe(403)
-  })
-
-  it('GET /api/v1/eventos should return success', async () => {
-    const response = await fetchWithRateLimitRetry('/api/v1/eventos', {
-      'x-api-key': apiKey,
+    it('bootstrap returns the public transport catalog', async () => {
+      const response = await get('/api/v1/bootstrap')
+      expectJson(response)
+      const data = await response.json()
+      expect(Array.isArray(data.routes)).toBe(true)
+      expect(Array.isArray(data.stops)).toBe(true)
     })
 
-    expect(response.status).toBe(200)
-    const data = await response.json()
-    expect(data.status).toBe('success')
-  })
-})
+    it('eventos returns JSON and its feed envelope', async () => {
+      const response = await get('/api/v1/eventos?limit=3')
+      expectJson(response)
+      const data = await response.json()
+      expect(data.status).toBe('success')
+      expect(Array.isArray(data.data)).toBe(true)
+    })
+
+    it.skipIf(!apiKey)(
+      'routes accepts the explicitly supplied test key',
+      async () => {
+        const response = await get('/api/v1/routes', true)
+        expectJson(response)
+      }
+    )
+  }
+)

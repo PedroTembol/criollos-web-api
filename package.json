@@ -10,10 +10,14 @@
     "postinstall": "nuxt prepare",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "test": "bun test",
-    "test:local": "vitest run",
+    "test": "bun run test:local",
+    "test:local": "bun run test:bun && bun run test:vitest",
     "deploy": "bun run test:local && bun run build && bun x wrangler pages deploy dist --project-name=criollos-web-api --branch=main",
-    "hooks:install": "git config core.hooksPath .githooks"
+    "hooks:install": "git config core.hooksPath .githooks",
+    "test:bun": "bun tests/run-local.ts",
+    "test:vitest": "CRIOLLOS_LIVE_TESTS=0 vitest run",
+    "test:live": "CRIOLLOS_LIVE_TESTS=1 vitest run tests/api.spec.ts",
+    "test:ui:fixtures": "node tests/ui/feeds.mjs && node tests/ui/flows.mjs && node tests/ui/beta.mjs"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

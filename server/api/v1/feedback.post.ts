@@ -19,8 +19,8 @@ export default defineEventHandler(async (event) => {
       ok: false,
       error: {
         code: 'INVALID_MESSAGE',
-        message: 'message is required'
-      }
+        message: 'message is required',
+      },
     }
   }
 
@@ -28,12 +28,12 @@ export default defineEventHandler(async (event) => {
     IDCLIENT: config.idClient,
     msg: message.trim(),
     rating: body.rating ?? null,
-    source: body.source ?? null
+    source: body.source ?? null,
   }
 
   await postUpstreamJson('SendFeedback', payload)
 
   return {
-    ok: true
+    ok: true,
   }
 })

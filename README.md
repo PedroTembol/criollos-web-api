@@ -41,12 +41,102 @@ Endpoints principales:
 - `CACHE_TTL_CATALOG` (default: `1800`)
 - `CACHE_TTL_BOOTSTRAP` (default: `300`)
 
+### Fuentes de agenda y gastronomía
+
+La agenda se lee de `https://visitacaguas.net/eventos`. El directorio
+gastronómico se lee de `https://visitacaguas.net/`; la antigua ruta
+`/donde-comer` ya no es la fuente del catálogo. Se recorren solamente enlaces
+de paginación del mismo directorio, sin filtros, con un máximo de 40 páginas,
+3 solicitudes simultáneas, 5 segundos por solicitud y 20 segundos por lectura.
+Los lugares se deduplican por ID y se ordenan por página de origen.
+
+Las lecturas completas se almacenan durante una hora y se conservan como
+último catálogo válido durante 24 horas. Si falla una página o cambia el HTML,
+el catálogo completo anterior se mantiene con `stale` y `staleReason`; una
+primera lectura parcial se identifica como incompleta y no crea un
+`lastSuccessAt`. Los fallos se reintentan después de 60 segundos. La salud
+reporta la hora de la lectura válida, incluso en respuestas de caché, y no la
+hora de la consulta a `/health`. La persistencia del caché de Cloudflare es
+por región y puede eliminarse antes de su TTL.
+
+### Pruebas locales y verificaciones live
+
+`bun run test` y `bun run test:local` ejecutan todas las suites locales:
+Bun para los archivos que importan `bun:test` y Vitest para los que importan
+`vitest`. No consultan producción. También se pueden ejecutar por separado
+con `bun run test:bun` y `bun run test:vitest`. El hook de pre-push ejecuta
+estas pruebas y el build; la CI usa las mismas comprobaciones.
+
+Las verificaciones live son opt-in, usan únicamente GET y requieren una URL
+explícita. La clave de pruebas es opcional y solo habilita el check autenticado;
+no hay claves incluidas en los tests:
+
+```bash
+CRIOLLOS_TEST_BASE_URL=https://criollos.app bun run test:live
+```
+
+Para incluir rutas autenticadas, suministrar `CRIOLLOS_TEST_API_KEY` mediante
+el entorno local autorizado. No ejecutar estas verificaciones como parte de
+CI ni de un pre-push. Un HTTP 429 o un fallo de contenido hace fallar el check;
+no se contabiliza como una respuesta válida.
+
+La QA de interfaz con fixtures es opt-in y no forma parte de CI. Requiere un
+Chromium ya instalado; en macOS puede usar Chrome con un perfil temporal
+headless. `CRIOLLOS_UI_BROWSER_PATH` permite seleccionar otro ejecutable
+instalado. En una terminal se arranca el servidor con fuentes ficticias y
+escrituras externas bloqueadas; en otra se ejecutan las pantallas:
+
+```bash
+NODE_OPTIONS="--import=$PWD/tests/ui/source-preload.mjs" bun run dev -- --host 127.0.0.1 --port 4176
+bun run test:ui:fixtures
+```
+
+Los scripts aceptan únicamente un backend local, interceptan los POST beta
+y guardan capturas/evidencias en `.cache/ui`. Comprueban carga, datos
+anteriores/parciales, fallos, reintentos, doble pulsación, búsqueda y Atrás,
+geolocalización ficticia y selección de paradas. Un HTTP 429 simulado verifica
+la interfaz; el límite real de solicitudes se valida en las pruebas del
+servidor. No prueban almacenamiento de producción ni condiciones reales del
+servicio de transporte.
+
+### Acceso, registro beta y publicación
+
+Los GET y HEAD de catálogo, tracking y ETA son públicos de forma explícita.
+También se autoriza únicamente el POST público de `/api/v1/beta` para registrar
+interés en las aplicaciones. Las demás escrituras administrativas están
+protegidas: sin configuración de acceso válida se rechazan.
+
+El registro beta requiere un binding KV `BETA_SIGNUPS` en el entorno de
+Cloudflare Pages. El servidor valida correo y plataforma, deduplica mediante
+SHA-256 con Web Crypto, asigna `createdAt` y guarda el registro con un TTL de
+90 días (7.776.000 segundos). Solo devuelve `persisted: true`
+cuando la escritura termina; si el binding no está disponible, devuelve HTTP
+503 y la interfaz no confirma el registro. La provisión está autorizada solo
+en el nivel gratuito, con namespaces separados para preview y producción.
+El hashing no requiere añadir un flag de compatibilidad Node.
+El body JSON se limita a 1.024 bytes y diez segundos. Cada instancia limita
+a cinco intentos por cliente en diez minutos; el exceso devuelve HTTP 429
+con un aviso de reintento. También reserva como máximo cien intentos de
+escritura nueva por día UTC e instancia; las escrituras fallidas consumen
+presupuesto y los registros existentes no. Estos controles son volátiles y
+se reinician con la instancia: no garantizan un límite global entre
+instancias ni evitan agotar la cuota KV de toda la cuenta. No se almacenan
+ni publican IPs. En el plan gratuito, el agotamiento de cuota falla y el
+formulario no confirma el registro; no hay una actualización automática a
+un plan de pago.
+
+La política del proyecto, verificada el 3 de octubre de 2026, publica previews
+accesibles desde ramas distintas de `main`; los cambios en `main` disparan
+publicación automática en producción. El relanzamiento requiere aprobación
+del usuario. No desplegar ni fusionar el trabajo de recuperación antes de
+esa aprobación.
+
 ### Cloudflare Pages
 
 Este proyecto usa `nitro.preset = "cloudflare-pages"`. Para deploy:
 
 - Build con `bun run build`
-- Publicar con Cloudflare Pages apuntando a `.output/public`
+- Publicar con Cloudflare Pages apuntando a `dist`
 
 ## Setup
 

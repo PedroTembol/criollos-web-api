@@ -1,3 +1,10 @@
+import {
+  getRequestHeader,
+  setResponseHeader,
+  setResponseStatus,
+  type H3Event,
+} from 'h3'
+
 export interface ConditionalCacheOptions {
   maxAgeSeconds: number
   payload: unknown
@@ -30,9 +37,7 @@ export function isConditionalRequestFresh(
   const ifNoneMatch = headers['if-none-match']
   if (ifNoneMatch) {
     const candidates = ifNoneMatch.split(',').map((entry) => entry.trim())
-    if (candidates.includes('*') || candidates.includes(etag)) {
-      return true
-    }
+    return candidates.includes('*') || candidates.includes(etag)
   }
 
   if (lastModified && headers['if-modified-since']) {

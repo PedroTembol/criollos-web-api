@@ -48,6 +48,19 @@ describe('isConditionalRequestFresh', () => {
     ).toBe(true)
   })
 
+  test('If-None-Match takes precedence over an unchanged modification time', () => {
+    expect(
+      isConditionalRequestFresh(
+        {
+          'if-none-match': 'W/"old"',
+          'if-modified-since': 'Sat, 03 Oct 2026 18:00:00 GMT',
+        },
+        'W/"changed-stale-state"',
+        'Sat, 03 Oct 2026 17:00:00 GMT'
+      )
+    ).toBe(false)
+  })
+
   test('returns false when validators do not match', () => {
     expect(
       isConditionalRequestFresh({ 'if-none-match': 'W/"other"' }, 'W/"abc"')

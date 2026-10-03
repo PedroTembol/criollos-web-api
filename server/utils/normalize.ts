@@ -1,8 +1,45 @@
 type AssetRaw = [number, number, string]
 type MarkerRaw = [number, number, string, string]
-type RouteRaw = [number, number, string, string, string, string, string, string, string, number, string]
-type RoutePointRaw = [number, number, number, number, number | null, number, number, string, number, number, number]
-type PositionRaw = [number, number, string, number, number, string, number, string, string, number, number, number]
+type RouteRaw = [
+  number,
+  number,
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+  number,
+  string,
+]
+type RoutePointRaw = [
+  number,
+  number,
+  number,
+  number,
+  number | null,
+  number,
+  number,
+  string,
+  number,
+  number,
+  number,
+]
+type PositionRaw = [
+  number,
+  number,
+  string,
+  number,
+  number,
+  string,
+  number,
+  string,
+  string,
+  number,
+  number,
+  number,
+]
 type ConfigRaw = [string, string][]
 
 export type Asset = {
@@ -84,7 +121,7 @@ function parseLatLngFromTrail(trail: string) {
   const lng = Number(lngRaw)
   return {
     lat: Number.isFinite(lat) ? lat : null,
-    lng: Number.isFinite(lng) ? lng : null
+    lng: Number.isFinite(lng) ? lng : null,
   }
 }
 
@@ -97,7 +134,7 @@ function markerLatLng(latlong: string) {
   const lng = Number(lngRaw)
   return {
     lat: Number.isFinite(lat) ? lat : null,
-    lng: Number.isFinite(lng) ? lng : null
+    lng: Number.isFinite(lng) ? lng : null,
   }
 }
 
@@ -112,7 +149,7 @@ export function normalizeGetAll(raw: unknown[]): BootstrapData {
   const assets = assetsRaw.map(([id, groupId, description]) => ({
     id,
     groupId,
-    description
+    description,
   }))
 
   const markers = markersRaw.map(([id, groupId, description, latlong]) => {
@@ -122,80 +159,70 @@ export function normalizeGetAll(raw: unknown[]): BootstrapData {
       groupId,
       description,
       lat,
-      lng
+      lng,
     }
   })
 
-  const routes = routesRaw.map(([
-    id,
-    clientId,
-    description,
-    lineColor,
-    assetColorCode,
-    directionStartName,
-    directionEndName,
-    svgFillColor1,
-    svgFillColor2,
-    isClosed,
-    departureTimes
-  ]) => ({
-    id,
-    clientId,
-    description,
-    lineColor,
-    assetColorCode,
-    directionStartName,
-    directionEndName,
-    svgFillColor1,
-    svgFillColor2,
-    isOpen: isClosed === 0,
-    departureTimes
-  }))
+  const routes = routesRaw.map(
+    ([
+      id,
+      clientId,
+      description,
+      lineColor,
+      assetColorCode,
+      directionStartName,
+      directionEndName,
+      svgFillColor1,
+      svgFillColor2,
+      isClosed,
+      departureTimes,
+    ]) => ({
+      id,
+      clientId,
+      description,
+      lineColor,
+      assetColorCode,
+      directionStartName,
+      directionEndName,
+      svgFillColor1,
+      svgFillColor2,
+      isOpen: isClosed === 0,
+      departureTimes,
+    })
+  )
 
-  const routePoints = routePointsRaw.map(([
-    id,
-    routeId,
-    direction,
-    order,
-    markerId,
-    lat,
-    lng,
-    type,
-    distance,
-    angle,
-    seconds
-  ]) => ({
-    id,
-    routeId,
-    direction,
-    order,
-    markerId,
-    lat,
-    lng,
-    type,
-    distance,
-    angle,
-    seconds
-  }))
+  const routePoints = routePointsRaw.map(
+    ([
+      id,
+      routeId,
+      direction,
+      order,
+      markerId,
+      lat,
+      lng,
+      type,
+      distance,
+      angle,
+      seconds,
+    ]) => ({
+      id,
+      routeId,
+      direction,
+      order,
+      markerId,
+      lat,
+      lng,
+      type,
+      distance,
+      angle,
+      seconds,
+    })
+  )
 
   const config = Object.fromEntries(configRaw)
 
-  const positions = positionsRaw.map(([
-    assetId,
-    driverId,
-    when,
-    speed,
-    inputX,
-    trail,
-    status,
-    msg,
-    extendedDescription,
-    routeId,
-    routePointNextId,
-    routePointPrevId
-  ]) => {
-    const { lat, lng } = parseLatLngFromTrail(trail)
-    return {
+  const positions = positionsRaw.map(
+    ([
       assetId,
       driverId,
       when,
@@ -208,12 +235,28 @@ export function normalizeGetAll(raw: unknown[]): BootstrapData {
       routeId,
       routePointNextId,
       routePointPrevId,
-      lat,
-      lng
+    ]) => {
+      const { lat, lng } = parseLatLngFromTrail(trail)
+      return {
+        assetId,
+        driverId,
+        when,
+        speed,
+        inputX,
+        trail,
+        status,
+        msg,
+        extendedDescription,
+        routeId,
+        routePointNextId,
+        routePointPrevId,
+        lat,
+        lng,
+      }
     }
-  })
+  )
 
-  const stops = routePoints.filter(point => point.markerId !== null)
+  const stops = routePoints.filter((point) => point.markerId !== null)
 
   return {
     assets,
@@ -222,6 +265,6 @@ export function normalizeGetAll(raw: unknown[]): BootstrapData {
     routePoints,
     stops,
     config,
-    positions
+    positions,
   }
 }

@@ -62,6 +62,14 @@ describe('scraper helpers', () => {
     )
   })
 
+  test('rejects impossible dates instead of moving events to another day', () => {
+    expect(__testables.toIsoDate('31 de febrero de 2026')).toBeNull()
+    expect(__testables.toIsoDate('0 de octubre de 2026')).toBeNull()
+    expect(__testables.toIsoDate('29 de febrero de 2028')).toBe(
+      '2028-02-29T00:00:00.000Z'
+    )
+  })
+
   test('extracts venue with and without emoji marker', () => {
     expect(__testables.extractVenue('📍 Lugar: Centro de Bellas Artes')).toBe(
       'Centro de Bellas Artes'

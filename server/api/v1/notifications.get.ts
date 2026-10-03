@@ -1,6 +1,12 @@
 import { defineEventHandler, getQuery, type H3Event } from 'h3'
 import { getBootstrapData } from '../../utils/bootstrap'
-import { getCachedEventos, getCachedGastronomia } from '../../utils/data'
+import { getEventosFeed, getGastronomiaFeed } from '../../utils/data'
+import {
+  getFeedMetadata,
+  combineFeedMetadata,
+  getTransportFeedMetadata,
+  unavailableFeedMetadata,
+} from '../../utils/feedMetadata'
 import { buildDiscoveryFeed } from '../../utils/discovery'
 import { filterEventosFeed } from '../../utils/eventos'
 import { filterGastronomiaFeed } from '../../utils/gastronomia'
@@ -69,38 +75,51 @@ export default defineEventHandler(async (event) => {
   const [bootstrapResult, eventosResult, gastronomiaResult] =
     await Promise.allSettled([
       getBootstrapData(null),
-      getCachedEventos(),
-      getCachedGastronomia(),
+      getEventosFeed(),
+      getGastronomiaFeed(),
     ])
   const bootstrap =
     bootstrapResult.status === 'fulfilled' ? bootstrapResult.value : null
   const eventos =
-    eventosResult.status === 'fulfilled' ? eventosResult.value : []
+    eventosResult.status === 'fulfilled' ? eventosResult.value : null
   const gastronomia =
-    gastronomiaResult.status === 'fulfilled' ? gastronomiaResult.value : []
+    gastronomiaResult.status === 'fulfilled' ? gastronomiaResult.value : null
+  const metadata = combineFeedMetadata({
+    transport: getTransportFeedMetadata(bootstrap),
+    eventos: eventos
+      ? getFeedMetadata(eventos)
+      : unavailableFeedMetadata('https://visitacaguas.net/eventos'),
+    gastronomia: gastronomia
+      ? getFeedMetadata(gastronomia)
+      : unavailableFeedMetadata('https://visitacaguas.net/'),
+  })
   const tracking = bootstrap
     ? buildTrackingSnapshot(bootstrap, bootstrap.fetchedAt, now)
     : null
-  const eventosFeed = filterEventosFeed(eventos, {}, now)
-  const gastronomiaFeed = filterGastronomiaFeed(gastronomia)
-  const discovery = buildDiscoveryFeed(eventos, gastronomia, now)
+  const eventosFeed = filterEventosFeed(eventos?.data || [], {}, now)
+  const gastronomiaFeed = filterGastronomiaFeed(gastronomia?.data || [])
+  const discovery = buildDiscoveryFeed(
+    eventos?.data || [],
+    gastronomia?.data || [],
+    now
+  )
   const notifications = buildNotificationsFeed(
     {
       tracking: tracking?.summary.alerts,
       eventos: eventosFeed.summary.alerts,
       discovery: discovery.summary.alerts,
       gastronomia: gastronomiaFeed.summary.alerts,
-      generatedAt: bootstrap?.fetchedAt ?? now.toISOString(),
+      generatedAt: now.toISOString(),
     },
     parseFilters(event)
   )
-  const payload = { status: 'success', ...notifications }
+  const payload = { status: 'success', ...notifications, metadata }
 
   if (
     applyConditionalCache(event, {
       maxAgeSeconds: RESPONSE_CACHE_TTL_SECONDS,
       payload,
-      lastModified: notifications.generatedAt,
+      lastModified: metadata.fetchedAt,
     })
   ) {
     return null

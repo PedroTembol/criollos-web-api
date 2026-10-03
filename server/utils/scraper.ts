@@ -33,6 +33,33 @@ export interface GastronomiaPlace {
   markerId?: number | null
 }
 
+export interface ScrapeResult<T> {
+  data: T[]
+  sourceUrl: string
+  fetchedAt: string | null
+  complete: boolean
+  error: string | null
+  pagesFetched: number
+  pagesDiscovered: number
+}
+
+type FetchHtml = (url: string, timeoutMs: number) => Promise<string>
+
+const GASTRONOMIA_SOURCE = 'https://visitacaguas.net/'
+const EVENTOS_SOURCE = 'https://visitacaguas.net/eventos'
+const PAGE_TIMEOUT_MS = 5000
+const SCRAPE_TIMEOUT_MS = 20000
+const MAX_GASTRONOMIA_PAGES = 40
+const PAGE_CONCURRENCY = 3
+
+const fetchHtml: FetchHtml = (url, timeoutMs) =>
+  $fetch<string>(url, {
+    timeout: timeoutMs,
+    retry: 0,
+    responseType: 'text',
+    headers: { Accept: 'text/html' },
+  })
+
 function normalizeText(value?: string | null): string {
   return value?.replace(/\s+/g, ' ').trim() ?? ''
 }
@@ -98,7 +125,15 @@ function toIsoDate(rawDate: string): string | null {
     return null
   }
 
-  return new Date(Date.UTC(year, month, day)).toISOString()
+  const date = new Date(Date.UTC(year, month, day))
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month ||
+    date.getUTCDate() !== day
+  ) {
+    return null
+  }
+  return date.toISOString()
 }
 
 function extractTitle(card: cheerio.Cheerio<any>) {
@@ -174,6 +209,31 @@ function extractSourceUrl(card: cheerio.Cheerio<any>) {
     card.find('a[href*="/gastronomia/"]').first().attr('href') ||
     card.find('a[href*="/donde-comer/"]').first().attr('href')
   return toAbsoluteUrl(link)
+}
+
+/** Follow only source-linked pages in the same unfiltered directory. */
+export function parseGastronomiaPageLinks(html: string): string[] {
+  const $ = cheerio.load(html)
+  const pages = new Map<number, string>()
+  $('a[href]').each((_, element) => {
+    try {
+      const url = new URL($(element).attr('href') || '', GASTRONOMIA_SOURCE)
+      const page = Number(url.searchParams.get('page'))
+      if (
+        url.origin !== new URL(GASTRONOMIA_SOURCE).origin ||
+        url.pathname !== '/' ||
+        !Number.isSafeInteger(page) ||
+        page < 2 ||
+        [...url.searchParams.keys()].some((key) => key !== 'page')
+      ) {
+        return
+      }
+      pages.set(page, `${GASTRONOMIA_SOURCE}?page=${page}`)
+    } catch {
+      // A malformed source link is not a request target.
+    }
+  })
+  return [...pages.entries()].sort(([a], [b]) => a - b).map(([, url]) => url)
 }
 
 function buildGastronomiaPlace(
@@ -279,24 +339,121 @@ export function parseGastronomiaFromHtml(html: string): GastronomiaPlace[] {
   return places
 }
 
-export async function scrapeEventos(): Promise<Evento[]> {
+export async function scrapeEventosFeed(
+  fetcher: FetchHtml = fetchHtml
+): Promise<ScrapeResult<Evento>> {
   try {
-    const html = await $fetch<string>('https://visitacaguas.net/eventos')
-    return parseEventosFromHtml(html)
-  } catch (error) {
-    console.error('Error scraping eventos:', error)
-    return []
+    const html = await fetcher(EVENTOS_SOURCE, PAGE_TIMEOUT_MS)
+    const data = parseEventosFromHtml(html)
+    const complete = data.length > 0
+    return {
+      data,
+      sourceUrl: EVENTOS_SOURCE,
+      fetchedAt: complete ? new Date().toISOString() : null,
+      complete,
+      error: complete ? null : 'No event cards recognized in source',
+      pagesFetched: 1,
+      pagesDiscovered: 1,
+    }
+  } catch {
+    return {
+      data: [],
+      sourceUrl: EVENTOS_SOURCE,
+      fetchedAt: null,
+      complete: false,
+      error: 'Event source unavailable',
+      pagesFetched: 0,
+      pagesDiscovered: 1,
+    }
   }
 }
 
-export async function scrapeGastronomia(): Promise<GastronomiaPlace[]> {
-  try {
-    const html = await $fetch<string>('https://visitacaguas.net/donde-comer')
-    return parseGastronomiaFromHtml(html)
-  } catch (error) {
-    console.error('Error scraping gastronomía:', error)
-    return []
+export async function scrapeGastronomiaFeed(
+  fetcher: FetchHtml = fetchHtml,
+  options: { maxPages?: number; timeoutMs?: number } = {}
+): Promise<ScrapeResult<GastronomiaPlace>> {
+  const maxPages = Math.min(
+    MAX_GASTRONOMIA_PAGES,
+    Math.max(1, Math.trunc(options.maxPages || MAX_GASTRONOMIA_PAGES))
+  )
+  const timeoutMs = Number.isFinite(options.timeoutMs)
+    ? Math.max(1, Math.min(SCRAPE_TIMEOUT_MS, options.timeoutMs!))
+    : SCRAPE_TIMEOUT_MS
+  const deadline = Date.now() + timeoutMs
+  const pending = [GASTRONOMIA_SOURCE]
+  const discovered = new Set(pending)
+  const attempted = new Set<string>()
+  const pages = new Map<string, GastronomiaPlace[]>()
+  let failed = false
+
+  while (pending.length && attempted.size < maxPages && Date.now() < deadline) {
+    const batch = pending.splice(
+      0,
+      Math.min(PAGE_CONCURRENCY, maxPages - attempted.size)
+    )
+    await Promise.all(
+      batch.map(async (url) => {
+        attempted.add(url)
+        try {
+          const html = await fetcher(
+            url,
+            Math.max(1, Math.min(PAGE_TIMEOUT_MS, deadline - Date.now()))
+          )
+          const data = parseGastronomiaFromHtml(html)
+          if (!data.length) {
+            failed = true
+            return
+          }
+          pages.set(url, data)
+          for (const next of parseGastronomiaPageLinks(html)) {
+            if (!discovered.has(next)) {
+              discovered.add(next)
+              pending.push(next)
+            }
+          }
+        } catch {
+          failed = true
+        }
+      })
+    )
   }
+
+  // Deterministic page order and stable IDs also dedupe desktop/mobile cards.
+  const places = new Map<string, GastronomiaPlace>()
+  const orderedPages = [...pages.entries()].sort(([a], [b]) => {
+    const pageA = Number(new URL(a).searchParams.get('page') || 1)
+    const pageB = Number(new URL(b).searchParams.get('page') || 1)
+    return pageA - pageB
+  })
+  for (const [, data] of orderedPages) {
+    for (const place of data) {
+      if (!places.has(place.id)) places.set(place.id, place)
+    }
+  }
+
+  const complete = !failed && !pending.length && pages.size > 0
+  return {
+    data: [...places.values()],
+    sourceUrl: GASTRONOMIA_SOURCE,
+    fetchedAt: pages.size ? new Date().toISOString() : null,
+    complete,
+    error: complete
+      ? null
+      : pages.size
+        ? `Gastronomy pagination incomplete (${pages.size}/${discovered.size} pages)`
+        : 'Gastronomy source unavailable or no place cards recognized',
+    pagesFetched: pages.size,
+    pagesDiscovered: discovered.size,
+  }
+}
+
+// Array getters remain compatible with existing catalog consumers.
+export async function scrapeEventos(): Promise<Evento[]> {
+  return (await scrapeEventosFeed()).data
+}
+
+export async function scrapeGastronomia(): Promise<GastronomiaPlace[]> {
+  return (await scrapeGastronomiaFeed()).data
 }
 
 export const __testables = {
