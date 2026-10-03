@@ -94,7 +94,11 @@ bun run test:ui:fixtures
 Los scripts aceptan únicamente un backend local, interceptan los POST beta
 y guardan capturas/evidencias en `.cache/ui`. Comprueban carga, datos
 anteriores/parciales, fallos, reintentos, doble pulsación, búsqueda y Atrás,
-geolocalización ficticia y selección de paradas. Un HTTP 429 simulado verifica
+geolocalización ficticia y selección de paradas. Los recorridos principales
+se comprueban en escritorio y móviles de 390 y 320 píxeles, incluidos filtros,
+fuentes y calendario. El preload usa 1000 consultas por minuto salvo que
+`RATE_LIMIT_RPM` ya esté definido, para aislar estas sesiones de prueba del
+límite de producción. Un HTTP 429 simulado verifica
 la interfaz; el límite real de solicitudes se valida en las pruebas del
 servidor. No prueban almacenamiento de producción ni condiciones reales del
 servicio de transporte.

@@ -1,147 +1,71 @@
 <template>
-  <div class="flex min-h-screen flex-col bg-slate-50">
-    <nav
-      aria-label="Atajos de página"
-      class="sr-only focus-within:not-sr-only focus-within:px-6 focus-within:py-4 focus-within:bg-white focus-within:border-b focus-within:border-slate-200"
-    >
-      <div
-        class="mx-auto flex max-w-5xl flex-wrap gap-3 text-sm font-bold text-[#0038A8]"
-      >
-        <a
-          href="#discovery-filters"
-          class="rounded-full border border-[#0038A8]/20 bg-[#0038A8]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#0038A8]"
-          >Ir a filtros</a
-        >
-        <a
-          href="#discovery-summary-cards"
-          class="rounded-full border border-[#0038A8]/20 bg-[#0038A8]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#0038A8]"
-          >Ir a resumen editorial</a
-        >
-        <a
-          href="#discovery-results"
-          class="rounded-full border border-[#0038A8]/20 bg-[#0038A8]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#0038A8]"
-          >Ir al feed</a
-        >
-      </div>
-    </nav>
-
-    <header class="bg-[#0038A8] px-6 py-6 text-white shadow-md">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4">
-        <NuxtLink to="/" class="group flex items-center gap-3">
-          <span class="text-3xl transition-transform group-hover:scale-110"
-            >🍍</span
-          >
-          <h1 class="text-xl font-bold uppercase tracking-tight">
-            Criollos <span class="text-[#FFD700]">Descubrir</span>
-          </h1>
-        </NuxtLink>
-        <div
-          class="rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-widest"
-        >
-          Beta
-        </div>
-      </div>
+  <main class="page-wrap catalog-page">
+    <header class="catalog-heading">
+      <p class="catalog-eyebrow">
+        <Compass :size="17" aria-hidden="true" /> Descubre Caguas
+      </p>
+      <h1 class="brand-display">Sal de la rutina, cerquita.</h1>
+      <p>Eventos, lugares y sabores para tu próxima vuelta por Caguas.</p>
     </header>
-
-    <main class="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-10">
-      <FeedStatus
-        :metadata="displayFeed?.metadata"
-        :pending="pending || refreshing"
-        :error="Boolean(error)"
-        :has-data="Boolean(displayFeed?.data?.length)"
-        @retry="retryFeed"
-      />
-      <section
-        id="discovery-filters"
-        class="mb-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+    <section
+      id="discovery-filters"
+      class="surface catalog-tools"
+      aria-label="Buscar eventos y lugares"
+    >
+      <form
+        aria-describedby="discovery-results-summary"
+        @submit.prevent="applySearch"
       >
-        <div
-          class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"
-        >
-          <div>
-            <p
-              class="mb-2 text-sm font-black uppercase tracking-[0.2em] text-[#0038A8]"
-            >
-              Feed público
-            </p>
-            <h2 class="text-3xl font-black text-slate-900">
-              Explora eventos y lugares con filtros rápidos
-            </h2>
-            <p class="mt-2 max-w-2xl text-slate-600">
-              Refina el feed por tipo, categoría, búsqueda textual o ventana de
-              fechas para planificar rápido qué hacer y dónde comer en Caguas.
-            </p>
+        <fieldset class="catalog-type-options" aria-label="Tipo de contenido">
+          <button
+            v-for="option in typeOptions"
+            :key="option.value"
+            type="button"
+            class="catalog-chip"
+            :aria-pressed="selectedType === option.value"
+            @click="setType(option.value)"
+          >
+            <component :is="option.icon" :size="16" aria-hidden="true" />{{
+              option.label
+            }}
+          </button>
+        </fieldset>
+        <div class="catalog-search">
+          <div class="catalog-field">
+            <label for="discovery-search">Buscar</label>
+            <input
+              id="discovery-search"
+              v-model="searchDraft"
+              type="search"
+              class="field"
+              placeholder="Nombre, lugar o actividad"
+            />
           </div>
-          <p
-            id="discovery-results-summary"
-            class="text-sm text-slate-500"
-            aria-live="polite"
+          <button type="submit" class="btn-primary">
+            <Search :size="17" aria-hidden="true" /> Buscar
+          </button>
+          <button
+            v-if="hasActiveFilters"
+            type="button"
+            class="btn-secondary"
+            @click="clearFilters"
           >
-            {{ resultSummary }}
-          </p>
+            Limpiar
+          </button>
         </div>
-
-        <form
-          class="mt-6 flex flex-col gap-4"
-          aria-describedby="discovery-results-summary"
-          @submit.prevent="applySearch"
-        >
-          <fieldset>
-            <legend
-              class="mb-2 text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-            >
-              Tipo de contenido
-            </legend>
-            <div class="flex flex-wrap gap-3">
-              <button
-                v-for="option in typeOptions"
-                :key="option.value"
-                type="button"
-                class="rounded-full border px-4 py-2 text-sm font-bold transition-colors"
-                :class="
-                  selectedType === option.value
-                    ? 'border-[#0038A8] bg-[#0038A8] text-white shadow-sm'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-[#0038A8] hover:text-[#0038A8]'
-                "
-                :aria-pressed="selectedType === option.value"
-                @click="setType(option.value)"
-              >
-                {{ option.label }}
-              </button>
-            </div>
-          </fieldset>
-
-          <div
-            class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_minmax(220px,0.8fr)_minmax(180px,0.55fr)_minmax(180px,0.55fr)_auto]"
-          >
-            <div>
-              <label
-                for="discovery-search"
-                class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-              >
-                Buscar
-              </label>
-              <input
-                id="discovery-search"
-                v-model="searchDraft"
-                type="search"
-                placeholder="Ej. plaza, café, bomba..."
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-inner outline-none transition focus:border-[#0038A8]"
-              />
-            </div>
-
-            <div>
-              <label
-                for="discovery-category"
-                class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-              >
-                Categoría
-              </label>
+        <details>
+          <summary>
+            <SlidersHorizontal :size="17" aria-hidden="true" /> Categoría y
+            fechas
+          </summary>
+          <div class="catalog-filter-grid">
+            <div class="catalog-field">
+              <label for="discovery-category">Categoría</label>
               <select
                 id="discovery-category"
                 v-model="selectedCategory"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-[#0038A8]"
-                @change="applyFilters"
+                class="field"
+                @change="applyFilters('category')"
               >
                 <option value="">Todas las categorías</option>
                 <option
@@ -153,241 +77,195 @@
                 </option>
               </select>
             </div>
-
-            <div>
-              <label
-                for="discovery-from"
-                class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-              >
-                Desde
-              </label>
+            <div class="catalog-field">
+              <label for="discovery-from">Desde</label>
               <input
                 id="discovery-from"
                 v-model="selectedFrom"
                 type="date"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-[#0038A8]"
-                @change="applyFilters"
+                class="field"
+                @change="applyFilters('from')"
               />
             </div>
-
-            <div>
-              <label
-                for="discovery-to"
-                class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-              >
-                Hasta
-              </label>
+            <div class="catalog-field">
+              <label for="discovery-to">Hasta</label>
               <input
                 id="discovery-to"
                 v-model="selectedTo"
                 type="date"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-[#0038A8]"
-                @change="applyFilters"
+                class="field"
+                @change="applyFilters('to')"
               />
             </div>
-
-            <div class="flex items-end gap-3">
-              <button
-                type="submit"
-                class="inline-flex flex-1 items-center justify-center rounded-2xl bg-[#CE1126] px-5 py-3 text-sm font-black uppercase tracking-widest text-white transition hover:bg-[#b00e20]"
-              >
-                Filtrar
-              </button>
-              <button
-                v-if="hasActiveFilters"
-                type="button"
-                class="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                @click="clearFilters"
-              >
-                Limpiar
-              </button>
-            </div>
           </div>
+          <p class="catalog-help">
+            Las fechas filtran los eventos; los lugares para comer siguen
+            disponibles.
+          </p>
+        </details>
 
-          <div
-            v-if="activeFilters.length"
-            class="flex flex-wrap items-center gap-2"
-            aria-live="polite"
-            aria-label="Filtros activos"
-          >
-            <span
-              class="text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-              >Activos</span
-            >
-            <button
-              v-for="filter in activeFilters"
-              :key="filter.key"
-              type="button"
-              class="inline-flex items-center gap-2 rounded-full border border-[#0038A8]/20 bg-[#0038A8]/5 px-3 py-1.5 text-sm font-bold text-[#0038A8] transition hover:border-[#0038A8]/40 hover:bg-[#0038A8]/10"
-              :aria-label="`Quitar filtro de ${filter.label.toLowerCase()}: ${filter.value}`"
-              @click="removeFilter(filter.key)"
-            >
-              <span>{{ filter.label }}: {{ filter.value }}</span>
-              <span aria-hidden="true">✕</span>
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section
-        id="discovery-summary-cards"
-        class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3"
-        aria-label="Resumen editorial del feed visible"
-      >
-        <article
-          v-for="card in summaryCards"
-          :key="card.id"
-          class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+        <div
+          v-if="activeFilters.length"
+          class="catalog-chips catalog-active"
+          aria-label="Filtros activos"
         >
-          <p
-            class="text-xs font-black uppercase tracking-[0.2em] text-slate-500"
+          <button
+            v-for="filter in activeFilters"
+            :key="filter.key"
+            type="button"
+            class="catalog-chip"
+            :aria-label="`Quitar filtro de ${filter.label.toLowerCase()}: ${filter.value}`"
+            @click="removeFilter(filter.key)"
           >
-            {{ card.label }}
+            <span>{{ filter.label }}: {{ filter.value }}</span
+            ><X :size="14" aria-hidden="true" />
+          </button>
+        </div>
+      </form>
+    </section>
+    <section aria-labelledby="discovery-results-heading">
+      <div class="catalog-results-head">
+        <div>
+          <h2 id="discovery-results-heading" class="brand-display">
+            {{
+              selectedType === 'evento'
+                ? 'Eventos para explorar'
+                : selectedType === 'gastronomia'
+                  ? 'Lugares para probar'
+                  : 'Tu próxima salida'
+            }}
+          </h2>
+          <p id="discovery-results-summary" aria-live="polite">
+            {{ resultSummary }}
           </p>
-          <h3 class="mt-3 text-2xl font-black text-slate-900 leading-tight">
-            {{ card.value }}
-          </h3>
-          <p class="mt-3 text-sm text-slate-600 leading-relaxed">
-            {{ card.hint }}
-          </p>
-        </article>
-      </section>
+        </div>
+      </div>
 
-      <section
-        v-if="alertCards.length"
-        class="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2"
-        aria-label="Alertas editoriales del feed visible"
-      >
-        <article
-          v-for="alert in alertCards"
-          :key="alert.id"
-          class="rounded-3xl border p-5 shadow-sm"
-          :class="
-            alert.severity === 'warning'
-              ? 'border-amber-200 bg-amber-50'
-              : 'border-[#0038A8]/15 bg-[#0038A8]/5'
-          "
-        >
-          <p
-            class="text-xs font-black uppercase tracking-[0.2em]"
-            :class="
-              alert.severity === 'warning' ? 'text-amber-700' : 'text-[#0038A8]'
-            "
-          >
-            {{ alert.eyebrow }}
-          </p>
-          <h3 class="mt-3 text-xl font-black leading-tight text-slate-900">
-            {{ alert.title }}
-          </h3>
-          <p class="mt-3 text-sm leading-relaxed text-slate-700">
-            {{ alert.body }}
-          </p>
-          <p
-            v-if="alert.meta"
-            class="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
-          >
-            {{ alert.meta }}
-          </p>
-        </article>
-      </section>
+      <FeedStatus
+        :metadata="displayFeed?.metadata"
+        :pending="pending || refreshing"
+        :error="Boolean(error)"
+        :has-data="Boolean(displayFeed?.data?.length)"
+        @retry="retryFeed"
+      />
 
       <div
         v-if="pending && !displayFeed?.data?.length"
-        class="flex flex-col items-center justify-center py-20"
+        class="surface catalog-state"
+        role="status"
       >
-        <div
-          class="h-12 w-12 animate-spin rounded-full border-b-2 border-[#0038A8]"
-        ></div>
-        <p class="mt-4 font-medium text-slate-500">
-          Buscando lo mejor de Caguas...
-        </p>
+        <LoaderCircle :size="28" class="animate-spin" aria-hidden="true" />
+        <h3>Buscando las opciones…</h3>
+        <p>Un momento mientras consultamos la información.</p>
       </div>
-
       <div
         v-else-if="error && !displayFeed?.data?.length"
-        class="rounded-3xl border border-red-100 bg-red-50 p-8 text-center"
+        class="surface catalog-state"
       >
-        <span class="mb-4 block text-4xl">⚠️</span>
-        <h2 class="mb-2 text-xl font-bold text-red-800">
-          No pudimos cargar las recomendaciones
-        </h2>
-        <p class="mb-6 text-red-600">
-          Hubo un error al conectar con el API Criollos.
+        <CircleAlert :size="28" aria-hidden="true" />
+        <h3>No pudimos cargar las opciones</h3>
+        <p>
+          La información no está disponible ahora. Vuelve a intentar en unos
+          minutos.
         </p>
         <button
+          type="button"
+          class="btn-primary"
           :disabled="refreshing || pending"
           @click="retryFeed"
-          class="rounded-full bg-red-600 px-6 py-2 font-bold text-white transition-colors hover:bg-red-700"
         >
           Reintentar
         </button>
       </div>
 
-      <div
-        v-else
-        id="discovery-results"
-        class="grid grid-cols-1 gap-8 md:grid-cols-2"
-        aria-live="polite"
-      >
+      <div v-else id="discovery-results" class="catalog-grid">
         <article
-          v-for="item in displayFeed?.data"
+          v-for="item in visibleItems"
           :key="item.id"
-          class="group flex flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-xl"
+          class="surface catalog-card"
         >
-          <div v-if="item.imageUrl" class="relative h-64 overflow-hidden">
+          <div class="catalog-media">
             <img
-              :src="item.imageUrl"
+              v-if="safeSourceUrl(item.imageUrl) && !failedImages.has(item.id)"
+              :src="safeSourceUrl(item.imageUrl)"
               :alt="item.imageAlt || item.title"
-              class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+              decoding="async"
+              @error="imageFailed(item.id)"
             />
-            <div
-              class="absolute left-4 top-4 rounded-full bg-[#0038A8] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-lg"
-            >
-              {{ item.tag }}
-            </div>
+            <component
+              :is="item.type === 'evento' ? CalendarDays : UtensilsCrossed"
+              v-else
+              :size="32"
+              :stroke-width="1.4"
+              aria-hidden="true"
+            />
           </div>
-
-          <div class="flex flex-1 flex-col p-8">
-            <div class="mb-4 flex items-start justify-between gap-3">
+          <div class="catalog-body">
+            <div class="catalog-tags">
               <span
-                class="text-xs font-bold uppercase tracking-widest text-[#0038A8]"
-                >{{ item.category }}</span
-              >
-              <span
-                v-if="item.date"
-                class="text-xs font-medium text-slate-400"
-                >{{ item.date }}</span
-              >
+                class="catalog-tag"
+                :class="{ 'catalog-tag-food': item.type === 'gastronomia' }"
+                >{{
+                  item.type === 'evento'
+                    ? 'Evento'
+                    : item.type === 'gastronomia'
+                      ? 'Gastronomía'
+                      : item.tag
+                }}</span
+              ><span>{{ item.category }}</span>
             </div>
-
-            <h3
-              class="mb-2 text-2xl font-black leading-tight text-slate-800 transition-colors group-hover:text-[#0038A8]"
-            >
-              {{ item.title }}
-            </h3>
-
-            <p class="mb-4 text-sm font-bold text-slate-500">
-              {{ item.subtitle }}
+            <h3 class="brand-display">{{ item.title }}</h3>
+            <p v-if="item.type === 'evento'" class="catalog-meta">
+              <CalendarDays :size="15" aria-hidden="true" /><span>{{
+                item.date || 'Fecha por confirmar'
+              }}</span>
             </p>
-
-            <p class="mb-8 line-clamp-3 leading-relaxed text-slate-600">
+            <p
+              v-if="item.subtitle && item.subtitle !== item.category"
+              class="catalog-meta"
+            >
+              <MapPin :size="15" aria-hidden="true" /><span>{{
+                item.subtitle
+              }}</span>
+            </p>
+            <p v-if="item.description" class="catalog-description">
               {{ item.description }}
             </p>
-
-            <div class="mt-auto">
-              <a
-                v-if="item.link"
-                :href="item.link"
-                target="_blank"
-                rel="noreferrer"
-                class="inline-flex items-center gap-2 text-sm font-black uppercase tracking-widest text-[#CE1126] transition-all hover:gap-3"
-              >
-                Ver detalles
-                <span>→</span>
-              </a>
-            </div>
+          </div>
+          <div class="catalog-actions">
+            <a
+              v-if="safeSourceUrl(item.link)"
+              :href="safeSourceUrl(item.link)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="catalog-source"
+              :aria-label="`Ver detalles de ${item.title} en ${sourceName(item.link)} (abre otra pestaña)`"
+            >
+              <span
+                >Ver detalles<small>{{ sourceName(item.link) }}</small></span
+              ><ArrowUpRight :size="17" aria-hidden="true" />
+            </a>
+            <span v-else class="catalog-source-missing"
+              >Sin enlace de la fuente</span
+            >
           </div>
         </article>
+      </div>
+
+      <div v-if="hasMoreResults" class="catalog-pagination">
+        <p aria-live="polite">
+          Mostrando {{ visibleItems.length }} de
+          {{ displayFeed?.count ?? displayFeed?.data?.length }}.
+        </p>
+        <button
+          type="button"
+          class="btn-secondary"
+          :disabled="pending"
+          @click="showMoreResults"
+        >
+          Ver más opciones
+        </button>
       </div>
 
       <div
@@ -395,99 +273,137 @@
           !pending &&
           !error &&
           displayFeed?.metadata?.state !== 'unavailable' &&
-          (!displayFeed?.data || displayFeed?.data.length === 0)
+          !displayFeed?.data?.length
         "
         id="discovery-empty-state"
-        class="rounded-3xl border border-dashed border-slate-200 bg-white py-20 text-center"
+        class="surface catalog-state"
         role="status"
         aria-live="polite"
       >
-        <span class="mb-4 block text-5xl">🌵</span>
-        <p class="text-lg text-slate-600">
-          No encontramos resultados para ese filtro.
+        <Search :size="28" aria-hidden="true" />
+        <h3>
+          {{
+            hasActiveFilters
+              ? 'No hay resultados con estos filtros'
+              : 'No hay resultados publicados por ahora'
+          }}
+        </h3>
+        <p>
+          {{
+            hasActiveFilters
+              ? 'Prueba otra búsqueda o quita los filtros para ver más opciones.'
+              : 'Vuelve más tarde o actualiza para consultar la fuente otra vez.'
+          }}
         </p>
-        <p class="mt-2 text-sm text-slate-500">
-          Prueba otra categoría o limpia la búsqueda para volver al feed
-          completo.
-        </p>
-        <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <div class="catalog-state-actions">
           <button
+            v-if="hasActiveFilters"
             type="button"
-            class="inline-flex items-center justify-center rounded-2xl bg-[#0038A8] px-5 py-3 text-sm font-black uppercase tracking-widest text-white transition hover:bg-[#002a7f]"
+            class="btn-primary"
             @click="clearFilters"
           >
             Limpiar filtros
           </button>
-          <a
-            href="#discovery-filters"
-            class="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+          <button
+            v-else
+            type="button"
+            class="btn-primary"
+            :disabled="refreshing || pending"
+            @click="retryFeed"
           >
-            Volver a filtros
-          </a>
+            Actualizar
+          </button>
+          <a href="#discovery-filters" class="btn-secondary"
+            >Volver a filtros</a
+          >
         </div>
       </div>
-    </main>
-
-    <footer class="bg-slate-900 px-6 py-10 text-center text-slate-400">
-      <div class="mx-auto max-w-5xl">
-        <p class="text-sm font-medium">
-          © 2026 Criollos · Hecho para Caguas 🍍
-        </p>
-      </div>
-    </footer>
-  </div>
+    </section>
+    <div v-if="displayFeed?.data?.length" class="catalog-more">
+      <p>¿Quieres explorar más?</p>
+      <NuxtLink to="/eventos" class="btn-secondary"
+        ><CalendarDays :size="16" aria-hidden="true" /> Toda la agenda</NuxtLink
+      >
+      <NuxtLink to="/gastronomia" class="btn-secondary"
+        ><UtensilsCrossed :size="16" aria-hidden="true" /> Todos los
+        lugares</NuxtLink
+      >
+    </div>
+  </main>
 </template>
 
 <script setup>
 import {
+  ArrowUpRight,
+  CalendarDays,
+  CircleAlert,
+  Compass,
+  Grid2X2,
+  LoaderCircle,
+  MapPin,
+  Search,
+  SlidersHorizontal,
+  UtensilsCrossed,
+  X,
+} from 'lucide-vue-next'
+import {
   getActiveDiscoveryFilters,
   getStableAvailableCategories,
 } from '../../utils/discoveryFilters'
-import {
-  getDiscoveryAlertCards,
-  getDiscoverySummaryCards,
-} from '../../utils/discoverySummary'
 
-const route = useRoute()
-const router = useRouter()
-
-const typeOptions = [
-  { value: '', label: 'Todo' },
-  { value: 'evento', label: 'Eventos' },
-  { value: 'gastronomia', label: 'Gastronomía' },
-]
-
-const normalizeQueryValue = (value) => {
-  if (Array.isArray(value)) {
-    return value[0] || ''
+const safeSourceUrl = (value) => {
+  if (typeof value !== 'string' || !value.trim()) return null
+  try {
+    const url = new URL(value)
+    return ['https:', 'http:'].includes(url.protocol) &&
+      !url.username &&
+      !url.password
+      ? url.href
+      : null
+  } catch {
+    return null
   }
-
+}
+const sourceName = (value) => {
+  const href = safeSourceUrl(value)
+  return href ? new URL(href).hostname.replace(/^www\./, '') : ''
+}
+const failedImages = ref(new Set())
+const imageFailed = (id) => {
+  failedImages.value = new Set([...failedImages.value, id])
+}
+const normalizeQueryValue = (value) => {
+  if (Array.isArray(value)) return value[0] || ''
   return typeof value === 'string' ? value : ''
 }
+const route = useRoute()
+const router = useRouter()
+const pagePath = route.path
+const appliedQuery = computed(() =>
+  router.currentRoute.value.path === pagePath
+    ? router.currentRoute.value.query
+    : route.query
+)
 
-const selectedType = ref(normalizeQueryValue(route.query.type))
-const selectedCategory = ref(normalizeQueryValue(route.query.category))
-const selectedFrom = ref(normalizeQueryValue(route.query.from))
-const selectedTo = ref(normalizeQueryValue(route.query.to))
-const searchDraft = ref(normalizeQueryValue(route.query.q))
-
-const queryParams = computed(() => {
-  const params = {}
-
-  if (selectedType.value) params.type = selectedType.value
-  if (selectedCategory.value) params.category = selectedCategory.value
-  if (selectedFrom.value) params.from = selectedFrom.value
-  if (selectedTo.value) params.to = selectedTo.value
-
-  const trimmedQuery = searchDraft.value.trim()
-  if (trimmedQuery) params.q = trimmedQuery
-
-  return params
-})
-
+const typeOptions = [
+  { value: '', label: 'Todo', icon: Grid2X2 },
+  { value: 'evento', label: 'Eventos', icon: CalendarDays },
+  { value: 'gastronomia', label: 'Gastronomía', icon: UtensilsCrossed },
+]
+const selectedType = ref(normalizeQueryValue(appliedQuery.value.type))
+const selectedCategory = ref(normalizeQueryValue(appliedQuery.value.category))
+const selectedFrom = ref(normalizeQueryValue(appliedQuery.value.from))
+const selectedTo = ref(normalizeQueryValue(appliedQuery.value.to))
+const searchDraft = ref(normalizeQueryValue(appliedQuery.value.q))
+const queryParams = computed(() => ({
+  type: normalizeQueryValue(appliedQuery.value.type) || undefined,
+  category: normalizeQueryValue(appliedQuery.value.category) || undefined,
+  from: normalizeQueryValue(appliedQuery.value.from) || undefined,
+  to: normalizeQueryValue(appliedQuery.value.to) || undefined,
+  q: normalizeQueryValue(appliedQuery.value.q).trim() || undefined,
+}))
 const { data: fullFeed, refresh: refreshFullFeed } =
   await useFetch('/api/v1/discovery')
-
 const {
   data: feed,
   pending,
@@ -504,6 +420,29 @@ watch(feed, (value) => {
   if (value?.data) lastSuccessfulFeed.value = value
 })
 const displayFeed = computed(() => feed.value || lastSuccessfulFeed.value)
+const lastSuccessfulFullFeed = shallowRef(fullFeed.value)
+watch(fullFeed, (value) => {
+  if (value?.data && value.metadata?.state !== 'unavailable')
+    lastSuccessfulFullFeed.value = value
+})
+const displayFullFeed = computed(() =>
+  fullFeed.value && fullFeed.value.metadata?.state !== 'unavailable'
+    ? fullFeed.value
+    : lastSuccessfulFullFeed.value
+)
+const visibleLimit = ref(24)
+const visibleItems = computed(() =>
+  (displayFeed.value?.data || []).slice(0, visibleLimit.value)
+)
+const hasMoreResults = computed(
+  () => (displayFeed.value?.data?.length || 0) > visibleLimit.value
+)
+watch(queryParams, () => {
+  visibleLimit.value = 24
+})
+const showMoreResults = () => {
+  visibleLimit.value += 24
+}
 const retryFeed = async () => {
   if (refreshing.value || pending.value) return
   refreshing.value = true
@@ -515,141 +454,568 @@ const retryFeed = async () => {
 }
 
 const availableCategories = computed(() =>
-  getStableAvailableCategories(fullFeed.value?.data || [], selectedType.value)
-)
-
-const hasActiveFilters = computed(() =>
-  Boolean(
-    selectedType.value ||
-    selectedCategory.value ||
-    selectedFrom.value ||
-    selectedTo.value ||
-    searchDraft.value.trim()
+  getStableAvailableCategories(
+    displayFullFeed.value?.data || [],
+    selectedType.value
   )
 )
-
+const hasActiveFilters = computed(() =>
+  Object.values(queryParams.value).some(Boolean)
+)
 const activeFilters = computed(() =>
   getActiveDiscoveryFilters(
     {
-      selectedType: selectedType.value,
-      selectedCategory: selectedCategory.value,
-      searchQuery: searchDraft.value,
-      from: selectedFrom.value,
-      to: selectedTo.value,
+      selectedType: queryParams.value.type,
+      selectedCategory: queryParams.value.category,
+      searchQuery: queryParams.value.q,
+      from: queryParams.value.from,
+      to: queryParams.value.to,
     },
     typeOptions
   )
 )
-
 const resultSummary = computed(() => {
-  if (pending.value) {
-    return 'Actualizando resultados…'
-  }
-
-  if (error.value) return 'Resultados sin confirmar; vuelve a intentar.'
-  if (displayFeed.value?.metadata?.state === 'unavailable')
-    return 'Fuente no disponible'
-
   const count = displayFeed.value?.count ?? 0
-  const categoriesCount = availableCategories.value.length
-  const categoryLabel =
-    categoriesCount === 1
-      ? '1 categoría disponible'
-      : `${categoriesCount} categorías disponibles`
-  const countLabel =
-    count === 1 ? '1 resultado disponible' : `${count} resultados disponibles`
-  return `${countLabel} · ${categoryLabel}`
+  if (error.value)
+    return count
+      ? `${count} resultados anteriores · actualización pendiente`
+      : 'Resultados sin confirmar'
+  if (displayFeed.value?.metadata?.state === 'unavailable')
+    return 'Resultados sin confirmar'
+  if (pending.value) return 'Actualizando resultados…'
+  return count === 1 ? '1 resultado' : `${count} resultados`
 })
-
-const summaryCards = computed(() =>
-  getDiscoverySummaryCards(
-    displayFeed.value?.summary,
-    displayFeed.value?.count ?? 0
-  )
-)
-const alertCards = computed(() =>
-  getDiscoveryAlertCards(displayFeed.value?.summary)
-)
-
 watch(
-  () => route.query,
-  (query) => {
-    selectedType.value = normalizeQueryValue(query.type)
-    selectedCategory.value = normalizeQueryValue(query.category)
-    selectedFrom.value = normalizeQueryValue(query.from)
-    selectedTo.value = normalizeQueryValue(query.to)
-    searchDraft.value = normalizeQueryValue(query.q)
-  }
+  () => appliedQuery.value.type,
+  (value) => {
+    selectedType.value = normalizeQueryValue(value)
+  },
+  { flush: 'sync' }
 )
-
-const pushQueryState = async () => {
-  const nextQuery = {
-    ...route.query,
-    type: selectedType.value || undefined,
-    category: selectedCategory.value || undefined,
-    from: selectedFrom.value || undefined,
-    to: selectedTo.value || undefined,
-    q: searchDraft.value.trim() || undefined,
+watch(
+  () => appliedQuery.value.category,
+  (value) => {
+    selectedCategory.value = normalizeQueryValue(value)
+  },
+  { flush: 'sync' }
+)
+watch(
+  () => appliedQuery.value.from,
+  (value) => {
+    selectedFrom.value = normalizeQueryValue(value)
+  },
+  { flush: 'sync' }
+)
+watch(
+  () => appliedQuery.value.to,
+  (value) => {
+    selectedTo.value = normalizeQueryValue(value)
+  },
+  { flush: 'sync' }
+)
+watch(
+  () => appliedQuery.value.q,
+  (value) => {
+    searchDraft.value = normalizeQueryValue(value)
+  },
+  { flush: 'sync' }
+)
+let pendingQuery = null
+const getQueryState = () => pendingQuery || appliedQuery.value
+const pushQueryState = async (patch) => {
+  const nextQuery = { ...getQueryState(), ...patch }
+  pendingQuery = nextQuery
+  try {
+    await router.push({ path: pagePath, query: nextQuery })
+  } finally {
+    if (pendingQuery === nextQuery) pendingQuery = null
   }
-
-  await router.replace({ query: nextQuery })
 }
-
-const applyFilters = async () => {
-  await pushQueryState()
+const applySearch = () =>
+  pushQueryState({ q: searchDraft.value.trim() || undefined })
+const applyFilters = (key) => {
+  const values = {
+    category: selectedCategory.value,
+    from: selectedFrom.value,
+    to: selectedTo.value,
+  }
+  return pushQueryState({ [key]: values[key] || undefined })
 }
-
-const applySearch = async () => {
-  await pushQueryState()
-}
-
-const setType = async (value) => {
-  selectedType.value = value
-  selectedCategory.value = ''
-  await pushQueryState()
-}
-
-const clearFilters = async () => {
+const setType = (value) =>
+  pushQueryState({ type: value || undefined, category: undefined })
+const clearFilters = () => {
   selectedType.value = ''
   selectedCategory.value = ''
   selectedFrom.value = ''
   selectedTo.value = ''
   searchDraft.value = ''
-  await router.replace({ query: {} })
+  return pushQueryState({
+    type: undefined,
+    category: undefined,
+    q: undefined,
+    from: undefined,
+    to: undefined,
+  })
 }
-
-const removeFilter = async (key) => {
-  if (key === 'type') {
-    selectedType.value = ''
-    selectedCategory.value = ''
-  }
-
-  if (key === 'category') {
-    selectedCategory.value = ''
-  }
-
-  if (key === 'q') {
-    searchDraft.value = ''
-  }
-
-  if (key === 'from') {
-    selectedFrom.value = ''
-  }
-
-  if (key === 'to') {
-    selectedTo.value = ''
-  }
-
-  await pushQueryState()
-}
-
+const removeFilter = (key) =>
+  pushQueryState(
+    key === 'type'
+      ? { type: undefined, category: undefined }
+      : { [key]: undefined }
+  )
 useHead({
-  title: 'Descubrir Caguas | Criollos',
+  title: 'Descubre Caguas | Criollos',
   meta: [
     {
       name: 'description',
-      content: 'Eventos y gastronomía en el corazón de Puerto Rico.',
+      content:
+        'Encuentra eventos, restaurantes y cafés para tu próxima salida por Caguas.',
     },
   ],
 })
 </script>
+
+<style scoped>
+.catalog-page {
+  padding-block: 2.5rem 3rem;
+}
+.catalog-heading {
+  margin-bottom: 1.5rem;
+}
+.catalog-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-blue);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.catalog-heading h1 {
+  margin-top: 0.45rem;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+.catalog-heading > p:last-child {
+  margin-top: 0.7rem;
+  max-width: 44rem;
+  color: var(--color-muted);
+}
+.catalog-tools {
+  margin-bottom: 1.5rem;
+  padding: 1.2rem;
+}
+.catalog-search {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+}
+.catalog-search > .catalog-field {
+  flex: 1;
+  min-width: 0;
+}
+.catalog-field label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.catalog-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.8rem;
+}
+.catalog-tools details {
+  margin-top: 0.7rem;
+}
+.catalog-tools summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  width: fit-content;
+  cursor: pointer;
+  color: var(--color-navy);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.catalog-tools summary::after {
+  content: '+';
+  margin-left: 0.35rem;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+.catalog-tools details[open] summary::after {
+  content: '−';
+}
+.catalog-help {
+  margin-top: 0.65rem;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.catalog-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.catalog-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  color: var(--color-navy);
+  background: var(--color-surface);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.catalog-chip[aria-pressed='true'] {
+  border-color: var(--color-navy);
+  background: var(--color-navy);
+  color: white;
+}
+.catalog-chip:hover {
+  border-color: var(--color-blue);
+}
+.catalog-active .catalog-chip {
+  background: var(--color-blue-soft);
+}
+.catalog-chip-count {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.catalog-results-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin: 1.5rem 0 1rem;
+}
+.catalog-results-head h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+.catalog-results-head p {
+  margin-top: 0.2rem;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.catalog-results-head .btn-secondary {
+  font-size: 0.85rem;
+}
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+.catalog-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  scroll-margin-top: 7rem;
+  box-shadow: none;
+}
+.catalog-media {
+  display: grid;
+  place-items: center;
+  height: 210px;
+  overflow: hidden;
+  background: var(--color-cream-deep);
+  color: var(--color-navy);
+}
+.catalog-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.catalog-body {
+  padding: 1.15rem 1.15rem 0.5rem;
+}
+.catalog-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+.catalog-tag {
+  border-radius: 0.3rem;
+  padding: 0.2rem 0.45rem;
+  background: var(--color-blue-soft);
+}
+.catalog-tag-food {
+  background: var(--color-ochre-soft);
+  color: var(--color-warning);
+}
+.catalog-body h3 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.catalog-meta {
+  display: flex;
+  align-items: start;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  color: var(--color-ink-soft);
+  font-size: 0.85rem;
+}
+.catalog-meta svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.catalog-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  margin-top: 0.7rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+.catalog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: auto;
+  padding: 0.8rem 1.15rem 1rem;
+}
+.catalog-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  color: var(--color-navy);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.catalog-source:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.catalog-source span {
+  display: flex;
+  flex-direction: column;
+}
+.catalog-source small {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.catalog-save {
+  font-size: 0.8rem;
+  padding: 0.55rem 0.8rem;
+}
+.catalog-source-missing {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+.catalog-state {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+.catalog-state > svg {
+  display: block;
+  margin: 0 auto 0.8rem;
+  color: var(--color-blue);
+}
+.catalog-state h3 {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+.catalog-state p {
+  max-width: 30rem;
+  margin: 0.6rem auto 1.1rem;
+  color: var(--color-muted);
+}
+.catalog-state-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.catalog-ideas {
+  margin-top: 2rem;
+  padding: 0.3rem 1.1rem;
+  box-shadow: none;
+}
+.catalog-ideas > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 56px;
+  cursor: pointer;
+  color: var(--color-navy);
+  font-weight: 700;
+}
+.catalog-ideas > summary::after {
+  content: '+';
+  margin-left: auto;
+  font-size: 1.3rem;
+  font-weight: 400;
+}
+.catalog-ideas[open] > summary::after {
+  content: '−';
+}
+.catalog-idea-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 0.5rem 0 1rem;
+}
+.catalog-idea-grid article {
+  padding: 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+}
+.catalog-idea-grid h3 {
+  font-weight: 800;
+  line-height: 1.35;
+}
+.catalog-idea-grid p {
+  margin-block: 0.6rem;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.catalog-type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.catalog-type-options .catalog-chip {
+  gap: 0.4rem;
+}
+@media (min-width: 1100px) {
+  .catalog-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 639px) {
+  .catalog-page {
+    padding-top: 1.5rem;
+  }
+  .catalog-heading {
+    margin-bottom: 1.1rem;
+  }
+  .catalog-heading > p:last-child {
+    font-size: 0.9rem;
+  }
+  .catalog-tools {
+    padding: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .catalog-search {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .catalog-search .btn-primary {
+    padding-inline: 1rem;
+  }
+  .catalog-search .btn-secondary {
+    flex-basis: 100%;
+  }
+  .catalog-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .catalog-filter-grid > .catalog-field:first-child {
+    grid-column: 1 / -1;
+  }
+  .catalog-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+  .catalog-card {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    align-content: start;
+  }
+  .catalog-media {
+    height: 100%;
+    min-height: 145px;
+  }
+  .catalog-media img {
+    min-height: 145px;
+  }
+  .catalog-body {
+    padding: 0.85rem 0.85rem 0.3rem;
+  }
+  .catalog-body h3 {
+    font-size: 1.08rem;
+  }
+  .catalog-tags {
+    font-size: 0.68rem;
+    margin-bottom: 0.4rem;
+  }
+  .catalog-description {
+    -webkit-line-clamp: 2;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    margin-top: 0.5rem;
+  }
+  .catalog-meta {
+    font-size: 0.77rem;
+  }
+  .catalog-actions {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--color-line);
+    padding: 0.4rem 0.85rem;
+  }
+  .catalog-results-head {
+    margin-top: 1rem;
+  }
+  .catalog-idea-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.catalog-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  border-top: 1px solid var(--color-line);
+  padding-top: 1.25rem;
+}
+.catalog-more p {
+  margin-right: auto;
+  font-weight: 700;
+}
+.catalog-more .btn-secondary {
+  font-size: 0.85rem;
+}
+.catalog-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.catalog-pagination p {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+@media (max-width: 359px) {
+  .catalog-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+</style>

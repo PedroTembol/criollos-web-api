@@ -14,6 +14,7 @@ export default defineNuxtConfig({
     },
   },
   modules: ['@nuxtjs/tailwindcss'],
+  css: ['~/assets/css/brand.css'],
   runtimeConfig: {
     upstreamBaseUrl:
       process.env.UPSTREAM_BASE_URL || 'https://taapi.caribetrack.com/',

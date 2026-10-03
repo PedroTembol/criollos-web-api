@@ -1,322 +1,355 @@
 <template>
-  <div class="flex min-h-screen flex-col bg-blue-50/30">
+  <main class="page-wrap py-8 md:py-12">
     <nav
       aria-label="Atajos de página"
-      class="sr-only focus-within:not-sr-only focus-within:px-6 focus-within:py-4 focus-within:bg-white focus-within:border-b focus-within:border-blue-200"
+      class="sr-only focus-within:not-sr-only focus-within:mb-6"
     >
-      <div
-        class="mx-auto flex max-w-5xl flex-wrap gap-3 text-sm font-bold text-[#0038A8]"
-      >
-        <a
-          href="#nearby-location"
-          class="rounded-full border border-[#0038A8]/20 bg-[#0038A8]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#0038A8]"
-          >Ir a ubicación</a
-        >
-        <a
-          href="#nearby-summary"
-          class="rounded-full border border-[#0038A8]/20 bg-[#0038A8]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#0038A8]"
+      <div class="flex flex-wrap gap-3">
+        <a href="#nearby-location" class="btn-secondary">Ir a ubicación</a>
+        <a v-if="coords && feed" href="#nearby-summary" class="btn-secondary"
           >Ir a resumen</a
         >
-        <a
-          href="#nearby-results"
-          class="rounded-full border border-[#0038A8]/20 bg-[#0038A8]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#0038A8]"
+        <a v-if="coords && feed" href="#nearby-results" class="btn-secondary"
           >Ir a paradas cercanas</a
         >
       </div>
     </nav>
 
-    <header class="bg-[#0038A8] px-6 py-6 text-white shadow-md">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <NuxtLink to="/" class="group flex items-center gap-3">
-            <span class="text-3xl transition-transform group-hover:scale-110"
-              >🍍</span
-            >
-            <h1 class="text-xl font-bold uppercase tracking-tight">
-              Criollos <span class="text-[#FFD700]">Cerca de ti</span>
-            </h1>
-          </NuxtLink>
-        </div>
-        <div
-          class="flex flex-wrap items-center gap-3 text-xs font-bold uppercase tracking-widest"
-        >
-          <NuxtLink
-            to="/discovery"
-            class="rounded-full border border-white/30 px-3 py-1.5 transition hover:bg-white/10"
-            >Discovery</NuxtLink
-          >
-          <NuxtLink
-            to="/eventos"
-            class="rounded-full border border-white/30 px-3 py-1.5 transition hover:bg-white/10"
-            >Eventos</NuxtLink
-          >
-          <span class="rounded-full bg-white/20 px-3 py-1.5">Beta</span>
-        </div>
+    <section
+      id="nearby-location"
+      class="nearby-location mb-8"
+      aria-labelledby="nearby-title"
+    >
+      <div class="nearby-intro">
+        <p class="nearby-eyebrow">Muévete por Caguas</p>
+        <h1 id="nearby-title" class="brand-display nearby-title">
+          Paradas cerca de ti
+        </h1>
+        <p class="nearby-lead">
+          Encuentra dónde subir al trolley, consulta las rutas de cada parada y
+          abre las indicaciones para llegar.
+        </p>
+        <NuxtLink to="/transporte" class="nearby-text-link mt-3">
+          Ver todas las rutas
+          <ArrowRight class="h-4 w-4" aria-hidden="true" />
+        </NuxtLink>
       </div>
-    </header>
-
-    <main class="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-10">
-      <section
-        id="nearby-location"
-        class="mb-8 rounded-3xl border border-blue-200 bg-white p-6 shadow-sm"
-      >
-        <div
-          class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+      <div class="location-action">
+        <LocateFixed class="mb-3 h-7 w-7" aria-hidden="true" />
+        <h2 class="brand-display text-xl font-bold">
+          Empieza por tu ubicación
+        </h2>
+        <p class="mt-2 text-sm leading-relaxed">
+          Al pulsar el botón, compartes tus coordenadas con Criollos para
+          consultar las paradas. Tu navegador te pedirá permiso.
+        </p>
+        <button
+          type="button"
+          @click="requestLocation"
+          :disabled="loadingLocation || pending"
+          class="location-button mt-5"
         >
+          <LocateFixed
+            class="h-4 w-4"
+            :class="{ 'animate-pulse': loadingLocation }"
+            aria-hidden="true"
+          />
+          {{ locationStatus }}
+        </button>
+        <p class="mt-3 text-xs leading-relaxed">
+          Puedes desactivar tu ubicación aquí cuando quieras.
+        </p>
+      </div>
+      <div v-if="coords" class="location-active">
+        <div class="flex min-w-0 items-start gap-3">
+          <MapPin
+            class="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-blue)]"
+            aria-hidden="true"
+          />
           <div>
-            <p
-              class="mb-2 text-sm font-black uppercase tracking-[0.2em] text-[#0038A8]"
-            >
-              Movilidad inteligente
+            <p class="text-sm font-bold">
+              Ubicación activa: {{ coords.lat.toFixed(4) }},
+              {{ coords.lng.toFixed(4) }}
             </p>
-            <h2 class="text-3xl font-black text-slate-900">
-              Encuentra tus paradas más cercanas
-            </h2>
-            <p class="mt-2 max-w-2xl text-slate-600">
-              Activa tu GPS para detectar automáticamente las paradas de trolley
-              a tu alrededor, con distancias reales y rutas que las sirven.
+            <p class="mt-1 text-xs text-[var(--color-muted)]">
+              Las distancias parten de esta ubicación. Actualízala si te has
+              movido.
             </p>
           </div>
-          <button
-            @click="requestLocation"
-            :disabled="loadingLocation"
-            class="disabled:opacity-50 inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0038A8] px-6 py-4 text-sm font-black uppercase tracking-widest text-white transition hover:bg-[#002a7f] shadow-lg shadow-blue-200"
-          >
-            <span class="text-xl">📍</span>
-            {{ locationStatus }}
-          </button>
         </div>
-
-        <div
-          v-if="coords"
-          class="mt-6 p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-between text-sm"
+        <button
+          type="button"
+          @click="clearLocation"
+          class="btn-secondary text-sm"
         >
-          <div class="flex items-center gap-3 text-blue-900 font-bold">
-            <span class="animate-pulse h-2 w-2 rounded-full bg-blue-500"></span>
-            Ubicación activa: {{ coords.lat.toFixed(4) }},
-            {{ coords.lng.toFixed(4) }}
-          </div>
-          <button
-            @click="clearLocation"
-            class="text-xs font-black uppercase tracking-widest text-blue-400 hover:text-blue-600"
-          >
-            Desactivar
-          </button>
-        </div>
-      </section>
+          <X class="h-4 w-4" aria-hidden="true" />
+          Desactivar
+        </button>
+      </div>
+    </section>
 
-      <section
-        v-if="coords"
-        id="nearby-summary"
-        class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2"
-        aria-label="Resumen de cercanía"
+    <div v-if="locationError" role="alert" class="nearby-notice mb-6">
+      <AlertTriangle class="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+      <p>{{ locationError }}</p>
+    </div>
+    <p
+      v-if="coords && (feed?.stale || (error && feed))"
+      role="status"
+      class="nearby-notice mb-6"
+    >
+      Mostrando la lectura anterior; no se pudo actualizar la fuente. Las rutas
+      y paradas pueden haber cambiado.
+    </p>
+
+    <section
+      v-if="coords && feed"
+      id="nearby-summary"
+      class="nearby-summary mb-8"
+      aria-label="Resumen de cercanía"
+    >
+      <article
+        v-for="card in summaryCards"
+        :key="card.id"
+        class="surface nearby-summary-card"
       >
-        <article
-          v-for="card in summaryCards"
-          :key="card.id"
-          class="rounded-3xl border p-5 shadow-sm"
-          :class="
-            card.tone === 'healthy'
-              ? 'border-emerald-200 bg-emerald-50/50'
-              : card.tone === 'warning'
-                ? 'border-amber-200 bg-amber-50/50'
-                : card.tone === 'critical'
-                  ? 'border-rose-200 bg-rose-50/50'
-                  : 'border-slate-200 bg-white'
-          "
-        >
+        <div class="summary-icon" aria-hidden="true">
+          <MapPin v-if="card.id === 'nearest'" class="h-5 w-5" />
+          <RouteIcon v-else class="h-5 w-5" />
+        </div>
+        <div>
           <p
-            class="text-xs font-black uppercase tracking-[0.2em] text-slate-500"
+            class="text-xs font-bold uppercase tracking-wider text-[var(--color-muted)]"
           >
             {{ card.label }}
           </p>
-          <h3
-            class="mt-3 text-3xl font-black text-slate-900 leading-tight"
-            aria-live="polite"
-          >
+          <h2 class="brand-display mt-1 text-2xl font-bold" aria-live="polite">
             {{ card.value }}
-          </h3>
-          <p class="mt-3 text-sm text-slate-600 leading-relaxed">
-            {{ card.hint }}
+          </h2>
+          <p class="mt-2 text-xs leading-relaxed text-[var(--color-muted)]">
+            {{
+              card.id === 'nearest'
+                ? 'Distancia en línea recta. El recorrido a pie puede ser mayor.'
+                : 'Hasta 10 paradas del catálogo, ordenadas por distancia.'
+            }}
           </p>
-        </article>
-      </section>
+        </div>
+      </article>
+    </section>
 
-      <p v-if="locationError" role="alert" class="mb-6 text-amber-800">
-        {{ locationError }}
+    <div
+      v-if="coords && pending && !feed"
+      role="status"
+      class="surface flex items-center gap-3 p-6 text-[var(--color-muted)]"
+    >
+      <RefreshCw
+        class="h-5 w-5 shrink-0 animate-spin text-[var(--color-blue)]"
+        aria-hidden="true"
+      />
+      Buscando las paradas más cercanas…
+    </div>
+    <div
+      v-else-if="coords && error && !feed"
+      role="alert"
+      class="surface p-6 md:p-8"
+    >
+      <AlertTriangle
+        class="mb-4 h-7 w-7 text-[var(--color-warning)]"
+        aria-hidden="true"
+      />
+      <h2 class="brand-display text-2xl font-bold">
+        No pudimos cargar las paradas
+      </h2>
+      <p class="mt-2 max-w-xl text-[var(--color-muted)]">
+        La información no está disponible ahora. Puedes reintentar la consulta
+        con tu ubicación actual o revisar todas las rutas.
       </p>
-      <p
-        v-if="coords && (feed?.stale || (error && feed))"
-        role="status"
-        class="mb-6 text-amber-800"
-      >
-        Mostrando la lectura anterior; no se pudo actualizar la fuente.
-      </p>
-      <p v-if="coords && feed?.fetchedAt" class="mb-4 text-sm text-slate-500">
-        Catálogo consultado:
-        {{
-          new Date(feed.fetchedAt).toLocaleString('es-PR', {
-            timeZone: 'America/Puerto_Rico',
-          })
-        }}
-      </p>
-      <div
-        v-if="pending && !feed"
-        class="flex flex-col items-center justify-center py-20"
-      >
-        <div
-          class="h-12 w-12 animate-spin rounded-full border-b-2 border-[#0038A8]"
-        ></div>
-        <p class="mt-4 font-medium text-slate-500">
-          Calculando distancias por el valle...
-        </p>
-      </div>
-
-      <div
-        v-else-if="error && !feed"
-        class="rounded-3xl border border-red-100 bg-red-50 p-8 text-center"
-      >
-        <span class="mb-4 block text-4xl">⚠️</span>
-        <h2 class="mb-2 text-xl font-bold text-red-800">
-          No pudimos cargar las paradas
-        </h2>
-        <p class="mb-6 text-red-600">
-          Hubo un error al conectar con el API Criollos.
-        </p>
+      <div class="mt-5 flex flex-wrap gap-3">
         <button
-          @click="refresh"
-          class="rounded-full bg-red-600 px-6 py-2 font-bold text-white transition-colors hover:bg-red-700"
+          type="button"
+          @click="retryNearby"
+          :disabled="pending || loadingLocation"
+          class="btn-primary"
         >
+          <RefreshCw class="h-4 w-4" aria-hidden="true" />
           Reintentar
         </button>
+        <NuxtLink to="/transporte" class="btn-secondary">Ver rutas</NuxtLink>
       </div>
-
-      <div
-        v-else-if="coords && feed"
-        id="nearby-results"
-        class="grid grid-cols-1 gap-6"
-        aria-live="polite"
-      >
-        <p v-if="!feed?.data?.length" role="status" class="text-slate-600">
-          No hay paradas disponibles para esta ubicación.
-        </p>
+    </div>
+    <section
+      v-else-if="coords && feed"
+      id="nearby-results"
+      aria-labelledby="nearby-results-title"
+    >
+      <div class="mb-5 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2
+            id="nearby-results-title"
+            class="brand-display text-2xl font-bold"
+          >
+            Elige tu parada
+          </h2>
+          <p class="mt-2 text-sm text-[var(--color-muted)]">
+            De la más cercana a la más lejana. Las distancias no indican un
+            tiempo de llegada.
+          </p>
+        </div>
         <button
+          type="button"
           @click="retryNearby"
-          :disabled="pending"
-          class="justify-self-start rounded-full bg-[#0038A8] px-5 py-2 font-bold text-white disabled:opacity-50"
+          :disabled="pending || loadingLocation"
+          class="btn-secondary disabled:opacity-50"
         >
+          <RefreshCw
+            class="h-4 w-4"
+            :class="{ 'animate-spin': pending }"
+            aria-hidden="true"
+          />
           {{ pending ? 'Actualizando…' : 'Actualizar paradas' }}
         </button>
+      </div>
+      <p
+        v-if="!feed.data?.length"
+        role="status"
+        class="surface p-6 text-[var(--color-muted)]"
+      >
+        No hay paradas disponibles para esta ubicación. Consulta todas las rutas
+        o actualiza tu ubicación para volver a buscar.
+      </p>
+      <div class="grid gap-4">
         <article
-          v-for="stop in feed?.data"
+          v-for="(stop, index) in feed.data"
           :key="stop.markerId"
-          class="group flex flex-col md:flex-row overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-sm transition-all hover:shadow-xl p-6 gap-6"
+          class="surface nearby-stop"
         >
-          <div
-            class="flex flex-col items-center justify-center bg-blue-50 rounded-2xl px-6 py-4 md:w-32 text-center border border-blue-100"
-          >
-            <span class="text-3xl mb-1">📍</span>
-            <p class="text-lg font-black text-blue-900">
+          <div class="nearby-distance">
+            <MapPin class="mb-2 h-5 w-5" aria-hidden="true" />
+            <p class="brand-display text-2xl font-bold">
               {{ stop.distanceLabel }}
             </p>
-            <p
-              class="text-[10px] font-black uppercase tracking-widest text-blue-400"
-            >
-              Distancia
-            </p>
+            <p class="mt-1 text-xs">En línea recta</p>
+            <span v-if="index === 0" class="nearest-label">Más cercana</span>
           </div>
-
-          <div class="flex flex-1 flex-col">
-            <div class="flex items-start justify-between gap-4 mb-2">
-              <h3
-                class="text-2xl font-black text-slate-800 transition-colors group-hover:text-[#0038A8]"
-              >
-                {{ stop.name }}
-              </h3>
-              <span
-                class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500"
-              >
-                #{{ stop.markerId }}
-              </span>
-            </div>
-
-            <p class="text-sm font-bold text-slate-500 mb-6">
-              Servida por
-              {{
-                stop.routeCount === 1 ? '1 ruta' : `${stop.routeCount} rutas`
-              }}
-              de trolley.
+          <div class="min-w-0 flex-1">
+            <p class="mb-1 text-xs font-medium text-[var(--color-muted)]">
+              Parada #{{ stop.markerId }}
             </p>
-
-            <NuxtLink
-              :to="`/transporte?stopId=${stop.markerId}`"
-              class="mb-3 font-bold text-[#0038A8] underline"
-              >Ver parada y rutas</NuxtLink
-            >
-            <div class="flex flex-wrap gap-3">
-              <div
+            <h3 class="brand-display text-xl font-bold md:text-2xl">
+              {{ stop.name }}
+            </h3>
+            <p class="mt-2 text-sm text-[var(--color-muted)]">
+              {{
+                stop.routeCount
+                  ? `${stop.routeCount === 1 ? '1 ruta' : `${stop.routeCount} rutas`} en el catálogo`
+                  : 'El catálogo no indica rutas para esta parada.'
+              }}
+            </p>
+            <div v-if="stop.routes?.length" class="mt-3 flex flex-wrap gap-2">
+              <NuxtLink
                 v-for="route in stop.routes"
                 :key="route.routeId"
-                class="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-2"
+                :to="{
+                  path: '/transporte',
+                  query: {
+                    routeId: String(route.routeId),
+                    stopId: String(stop.markerId),
+                  },
+                }"
+                class="nearby-route"
               >
-                <div
-                  class="h-4 w-4 rounded-full border border-white shadow-sm"
-                  :style="{ backgroundColor: route.routeColor || '#CBD5E1' }"
-                ></div>
-                <div class="text-xs">
-                  <p class="font-black text-slate-900 leading-none">
-                    Ruta {{ route.routeId }}
-                  </p>
-                  <p
-                    class="text-[10px] text-slate-500 mt-1 uppercase tracking-widest font-bold"
-                  >
-                    {{ route.routeName || 'Sin nombre' }}
-                  </p>
-                </div>
-              </div>
+                <span
+                  class="route-dot"
+                  :style="{
+                    backgroundColor: route.routeColor || 'var(--color-navy)',
+                  }"
+                  aria-hidden="true"
+                />
+                <span>{{ route.routeName || `Ruta ${route.routeId}` }}</span>
+                <ArrowRight class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              </NuxtLink>
             </div>
+            <NuxtLink
+              :to="`/transporte?stopId=${stop.markerId}`"
+              class="nearby-text-link mt-2 text-sm"
+              >Ver parada y rutas
+              <ArrowRight class="h-4 w-4" aria-hidden="true"
+            /></NuxtLink>
           </div>
-
-          <div class="flex items-center justify-center">
-            <a
-              :href="`https://www.google.com/maps/dir/?api=1&destination=${stop.lat},${stop.lng}`"
-              target="_blank"
-              rel="noreferrer"
-              class="inline-flex items-center justify-center h-12 w-12 rounded-full bg-slate-100 text-slate-600 transition-all hover:bg-[#CE1126] hover:text-white group-hover:shadow-lg"
-              title="Cómo llegar"
-            >
-              <span class="text-xl">🚶</span>
-            </a>
-          </div>
+          <a
+            :href="`https://www.google.com/maps/dir/?api=1&destination=${stop.lat},${stop.lng}`"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn-primary nearby-directions"
+            title="Cómo llegar"
+            :aria-label="`Cómo llegar a ${stop.name} en mapas`"
+          >
+            <Navigation class="h-4 w-4" aria-hidden="true" />
+            Cómo llegar
+            <ArrowUpRight class="h-4 w-4" aria-hidden="true" />
+          </a>
         </article>
       </div>
-
-      <div
-        v-else
-        class="rounded-3xl border border-dashed border-blue-200 bg-white py-20 text-center"
-      >
-        <span class="mb-4 block text-6xl">🧭</span>
-        <h3 class="text-xl font-bold text-slate-800 mb-2">
-          Esperando tu ubicación
-        </h3>
-        <p class="text-slate-600 max-w-md mx-auto">
-          Presiona el botón de "Actualizar ubicación" para encontrar las paradas
-          más cercanas a donde estás ahora mismo.
-        </p>
+      <p class="mt-5 text-xs text-[var(--color-muted)]">
+        Catálogo consultado: {{ formatTimestamp(feed.fetchedAt) }} · Hora de
+        Puerto Rico.
+      </p>
+    </section>
+    <section
+      v-else
+      class="surface nearby-empty"
+      aria-labelledby="nearby-empty-title"
+    >
+      <div class="empty-heading">
+        <MapPin class="h-7 w-7 text-[var(--color-blue)]" aria-hidden="true" />
+        <div>
+          <h2 id="nearby-empty-title" class="brand-display text-2xl font-bold">
+            Esperando tu ubicación
+          </h2>
+          <p class="mt-2 max-w-xl text-[var(--color-muted)]">
+            Pulsa “Actualizar ubicación” para ver las paradas más cercanas.
+            También puedes consultar las rutas sin compartir tu ubicación.
+          </p>
+        </div>
       </div>
-    </main>
-
-    <footer class="bg-slate-900 px-6 py-10 text-center text-slate-400">
-      <div class="mx-auto max-w-5xl">
-        <p class="text-sm font-medium">
-          © 2026 Criollos · Hecho para el ciudadano caguano 🍍
-        </p>
-      </div>
-    </footer>
-  </div>
+      <ol class="nearby-steps">
+        <li>
+          <span class="step-number" aria-hidden="true">1</span>
+          <div>
+            <h3 class="font-bold">Comparte tu ubicación</h3>
+            <p>Autoriza el acceso en tu navegador.</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-number" aria-hidden="true">2</span>
+          <div>
+            <h3 class="font-bold">Encuentra una parada</h3>
+            <p>Compara distancias y consulta las rutas.</p>
+          </div>
+        </li>
+        <li>
+          <span class="step-number" aria-hidden="true">3</span>
+          <div>
+            <h3 class="font-bold">Abre cómo llegar</h3>
+            <p>Revisa el recorrido en mapas antes de salir.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+  </main>
 </template>
 
 <script setup>
+import {
+  AlertTriangle,
+  ArrowRight,
+  ArrowUpRight,
+  LocateFixed,
+  MapPin,
+  Navigation,
+  RefreshCw,
+  Route as RouteIcon,
+  X,
+} from 'lucide-vue-next'
 import {
   getNearbyStopsSummaryCards,
   getUserLocation,
@@ -368,7 +401,7 @@ const feed = computed(() => {
 })
 
 const retryNearby = () => {
-  if (coords.value && !pending.value) refresh()
+  if (coords.value && !pending.value && !loadingLocation.value) refresh()
 }
 onBeforeUnmount(() => {
   locationGeneration++
@@ -379,12 +412,22 @@ const summaryCards = computed(() =>
   getNearbyStopsSummaryCards(feed.value?.summary, feed.value?.count ?? 0)
 )
 
+function formatTimestamp(value) {
+  if (!value || !Number.isFinite(Date.parse(value)))
+    return 'Fecha sin confirmar'
+  return new Intl.DateTimeFormat('es-PR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'America/Puerto_Rico',
+  }).format(new Date(value))
+}
+
 const requestLocation = async () => {
-  if (loadingLocation.value) return
+  if (loadingLocation.value || pending.value) return
   const generation = ++locationGeneration
   locationError.value = ''
   loadingLocation.value = true
-  locationStatus.value = 'Localizando...'
+  locationStatus.value = 'Localizando…'
   try {
     const loc = await getUserLocation()
     if (generation !== locationGeneration) return
@@ -429,3 +472,257 @@ useHead({
   ],
 })
 </script>
+
+<style scoped>
+.nearby-eyebrow {
+  margin-bottom: 0.5rem;
+  color: var(--color-blue);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.nearby-title {
+  font-size: clamp(2.35rem, 5vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.08;
+}
+.nearby-lead {
+  max-width: 36rem;
+  margin-top: 1rem;
+  color: var(--color-muted);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+.nearby-location {
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+}
+.location-action {
+  border-radius: var(--radius);
+  background: var(--color-navy);
+  color: var(--color-surface);
+  padding: 1.5rem;
+}
+.location-button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-navy);
+  padding: 0.8rem 1rem;
+  font-weight: 800;
+  transition: background 180ms ease;
+}
+.location-button:hover {
+  background: var(--color-cream-deep);
+}
+.location-button:focus-visible {
+  outline-color: var(--color-surface);
+}
+.location-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.location-active {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  padding: 1rem 1.25rem;
+}
+.nearby-notice {
+  display: flex;
+  align-items: start;
+  gap: 0.75rem;
+  border: 1px solid var(--color-ochre);
+  border-radius: var(--radius);
+  background: var(--color-ochre-soft);
+  color: var(--color-warning);
+  padding: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.nearby-text-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-navy);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.nearby-summary {
+  display: grid;
+  gap: 1rem;
+}
+.nearby-summary-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+.summary-icon {
+  display: flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: var(--color-cream);
+  color: var(--color-blue);
+}
+.nearby-stop {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.25rem;
+  padding: 1.25rem;
+}
+.nearby-distance {
+  width: 100%;
+  border-radius: 0.75rem;
+  background: var(--color-cream);
+  color: var(--color-navy);
+  padding: 1rem;
+}
+.nearest-label {
+  display: inline-block;
+  margin-top: 0.6rem;
+  color: var(--color-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.nearby-route {
+  display: inline-flex;
+  min-height: 44px;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.65rem;
+  background: var(--color-cream);
+  padding: 0.5rem 0.7rem;
+  color: var(--color-navy);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.nearby-route:hover {
+  background: var(--color-cream-deep);
+}
+.route-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  border: 1px solid rgb(18 26 43 / 0.15);
+  border-radius: 50%;
+}
+.nearby-directions {
+  width: 100%;
+  flex-shrink: 0;
+  font-size: 0.875rem;
+}
+.nearby-empty {
+  padding: 1.5rem;
+}
+.empty-heading {
+  display: flex;
+  align-items: start;
+  gap: 1rem;
+}
+.empty-heading > svg {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+.nearby-steps {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-line);
+}
+.nearby-steps li {
+  display: flex;
+  align-items: start;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+.nearby-steps p {
+  margin-top: 0.25rem;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+.step-number {
+  display: flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-cream);
+  color: var(--color-blue);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+@media (min-width: 640px) {
+  .nearby-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .nearby-stop {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+  .nearby-distance {
+    width: 7.5rem;
+    flex-shrink: 0;
+    text-align: center;
+  }
+  .nearby-distance svg {
+    margin-inline: auto;
+  }
+  .nearby-directions {
+    width: auto;
+    margin-left: 9rem;
+  }
+  .nearby-empty {
+    padding: 2rem;
+  }
+}
+@media (min-width: 768px) {
+  .nearby-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .nearby-location {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 2rem;
+  }
+  .location-active {
+    grid-column: 1 / -1;
+  }
+  .nearby-stop {
+    flex-wrap: nowrap;
+  }
+  .nearby-directions {
+    margin-left: 0;
+  }
+}
+</style>

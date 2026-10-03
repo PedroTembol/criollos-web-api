@@ -94,29 +94,16 @@ try {
   let posts = 0
   await page.route('**/api/v1/beta', async (route) => {
     posts++
-    await new Promise((r) => setTimeout(r, 250))
-    return route.fulfill({
-      status: 503,
-      contentType: 'application/json',
-      body: '{"persisted":false}',
-    })
+    await route.fulfill({ status: 503, body: '{"persisted":false}' })
   })
-  await page
-    .getByLabel('Email para invitación beta')
-    .fill('fixture@example.invalid')
-  const beta = page.getByRole('button', { name: 'Pedir Acceso', exact: true })
-  await beta.evaluate((b) => {
-    b.click()
-    b.click()
-  })
-  await page.getByText(/Tu correo no se confirmó como guardado/).waitFor()
-  assert.equal(posts, 1, 'Double click cannot submit twice')
+  assert.equal(await page.getByLabel('Email para invitación beta').count(), 0)
   assert.equal(
     await page
-      .getByText('Tu interés se guardó correctamente. 🍍', { exact: true })
+      .getByRole('button', { name: 'Pedir Acceso', exact: true })
       .count(),
     0
   )
+  assert.equal(posts, 0, 'The web start screen must not write beta records')
   let firstDone
   const firstFinished = new Promise((r) => (firstDone = r))
   await page.route('**/api/v1/search*', async (route) => {
@@ -177,8 +164,7 @@ try {
       'no-invented-zero',
       'retains-tracking-on-error',
       'stale-label',
-      'beta503-no-success',
-      'beta-doubleclick',
+      'no-beta-signup-or-write',
       'search-late-response-ignored',
       'meaningful-search-navigation',
     ],

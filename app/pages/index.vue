@@ -1,1005 +1,787 @@
 <template>
-  <div class="flex flex-col">
-    <!-- Hero Section -->
-    <header
-      class="relative bg-gradient-to-b from-[#0038A8] to-[#002a7f] text-white py-20 px-6 overflow-hidden"
+  <main class="page-wrap py-6 md:py-10">
+    <section
+      class="fade-rise mb-8 grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)] lg:items-end"
+      aria-labelledby="home-heading"
     >
-      <div class="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-        <span class="text-[20rem] leading-none" aria-hidden="true">🍍</span>
+      <div>
+        <p
+          class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-blue)]"
+        >
+          Criollos · Caguas
+        </p>
+        <h1
+          id="home-heading"
+          class="brand-display text-4xl font-extrabold leading-[1.05] text-[var(--color-ink)] md:text-5xl"
+        >
+          Tu día en Caguas
+        </h1>
+        <p class="mt-3 max-w-xl text-lg text-[var(--color-muted)]">
+          Encuentra tu ruta, un plan o algo rico, desde aquí.
+        </p>
       </div>
 
-      <div class="max-w-5xl mx-auto relative z-10">
-        <div class="flex items-center gap-3 mb-6">
+      <div class="relative" role="search">
+        <label for="home-search" class="sr-only">Buscar en Criollos</label>
+        <div class="relative">
+          <Search
+            class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted)]"
+            aria-hidden="true"
+          />
+          <input
+            id="home-search"
+            v-model="searchQuery"
+            type="search"
+            placeholder="Busca rutas, eventos o comida…"
+            class="field pl-10"
+            aria-label="Buscador global de Criollos"
+            role="combobox"
+            aria-autocomplete="list"
+            :aria-expanded="searchResults.length > 0"
+            aria-haspopup="listbox"
+            :aria-controls="
+              searchResults.length ? 'search-results-list' : undefined
+            "
+            :aria-activedescendant="
+              activeIndex >= 0 ? `result-item-${activeIndex}` : undefined
+            "
+            @input="handleSearch"
+            @keydown.down.prevent="moveActiveIndex(1)"
+            @keydown.up.prevent="moveActiveIndex(-1)"
+            @keydown.enter.prevent="selectActiveResult"
+            @keydown.esc="closeSearch"
+          />
           <span
-            class="text-4xl"
-            role="img"
-            aria-label="Piña - Símbolo de hospitalidad criolla"
-            >🍍</span
+            v-if="searchLoading"
+            class="absolute inset-y-0 right-3 flex items-center"
+            aria-hidden="true"
           >
-          <h1 class="text-3xl font-bold tracking-tight uppercase">Criollos</h1>
+            <span
+              class="h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-line)] border-t-[var(--color-navy)]"
+            />
+          </span>
         </div>
 
-        <h2 class="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
-          Caguas en la <br />
-          <span class="text-[#FFD700]">palma de tu mano</span>
-        </h2>
-
-        <p
-          class="text-xl md:text-2xl text-blue-100 mb-10 max-w-2xl leading-relaxed"
+        <div
+          v-if="searchResults.length"
+          id="search-results-list"
+          role="listbox"
+          aria-label="Resultados de búsqueda"
+          class="surface absolute z-30 mt-2 max-h-[50vh] w-full overflow-y-auto p-2"
         >
-          Estamos transformando el Valle del Turabo en una ciudad inteligente.
-          Desde el tracking de trolleys en tiempo real hasta la mejor
-          gastronomía criolla.
-        </p>
-
-        <nav class="flex flex-wrap gap-4" aria-label="Navegación principal">
-          <NuxtLink
-            to="/discovery"
-            class="bg-[#CE1126] hover:bg-[#b00e20] text-white px-8 py-4 rounded-full font-bold text-lg transition-all transform hover:scale-105 shadow-lg text-center"
+          <button
+            v-for="(result, index) in searchResults"
+            :id="`result-item-${index}`"
+            :key="result.id"
+            type="button"
+            role="option"
+            :aria-selected="index === activeIndex"
+            class="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors"
+            :class="
+              index === activeIndex
+                ? 'bg-[var(--color-blue-soft)]'
+                : 'hover:bg-[var(--color-cream)]'
+            "
+            @click="navigateResult(result)"
+            @mouseenter="activeIndex = index"
           >
-            Descubrir Caguas
-          </NuxtLink>
-          <NuxtLink
-            to="/eventos"
-            class="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/30 px-8 py-4 rounded-full font-bold text-lg transition-all text-center"
-          >
-            Agenda Cultural
-          </NuxtLink>
-          <NuxtLink
-            to="/gastronomia"
-            class="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/30 px-8 py-4 rounded-full font-bold text-lg transition-all text-center"
-          >
-            Ruta Gastronómica
-          </NuxtLink>
-          <NuxtLink
-            to="/cerca"
-            class="bg-white/10 hover:bg-white/20 backdrop-blur-md text-[#FFD700] border border-[#FFD700]/30 px-8 py-4 rounded-full font-bold text-lg transition-all text-center"
-          >
-            Cerca de ti
-          </NuxtLink>
-        </nav>
-
-        <!-- Global Search Bar -->
-        <div class="mt-12 max-w-2xl" role="search">
-          <div class="relative group">
-            <div
-              class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none"
-            >
-              <span class="text-2xl" aria-hidden="true">🔍</span>
-            </div>
-            <input
-              v-model="searchQuery"
-              @input="handleSearch"
-              @keydown.down.prevent="moveActiveIndex(1)"
-              @keydown.up.prevent="moveActiveIndex(-1)"
-              @keydown.enter.prevent="selectActiveResult"
-              @keydown.esc="closeSearch"
-              type="text"
-              placeholder="Busca rutas, paradas, eventos o comida..."
-              class="w-full bg-white/10 backdrop-blur-xl border border-white/20 text-white placeholder-blue-200 text-xl px-16 py-5 rounded-3xl outline-none focus:bg-white/20 focus:border-white/40 transition-all shadow-2xl"
-              aria-label="Buscador global de Criollos"
-              role="combobox"
-              aria-autocomplete="list"
-              :aria-expanded="searchResults.length > 0"
-              aria-haspopup="listbox"
-              :aria-controls="
-                searchResults.length ? 'search-results-list' : undefined
-              "
-              :aria-activedescendant="
-                activeIndex >= 0 ? `result-item-${activeIndex}` : undefined
-              "
-            />
-            <div
-              v-if="searchLoading"
-              class="absolute inset-y-0 right-0 pr-6 flex items-center"
+            <component
+              :is="resultTypeIcon(result.type)"
+              class="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-navy)]"
               aria-hidden="true"
-            >
-              <div
-                class="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"
-              ></div>
-            </div>
-          </div>
-
-          <!-- Search Results Dropdown -->
-          <div
-            v-if="searchResults.length"
-            id="search-results-list"
-            role="listbox"
-            aria-label="Resultados de búsqueda"
-            class="absolute mt-4 w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden z-50 border border-slate-200 animate-in fade-in slide-in-from-top-4 duration-300"
-          >
-            <div class="max-h-[60vh] overflow-y-auto p-2">
-              <div
-                v-for="(result, index) in searchResults"
-                :key="result.id"
-                :id="`result-item-${index}`"
-                role="option"
-                :aria-selected="index === activeIndex"
-                class="group p-4 hover:bg-slate-50 rounded-2xl transition-all cursor-pointer border border-transparent flex items-start gap-4"
-                :class="{
-                  'bg-slate-50 border-slate-100': index === activeIndex,
-                }"
-                @click="navigateResult(result)"
-                @mouseenter="activeIndex = index"
-              >
-                <div
-                  class="bg-slate-100 p-3 rounded-xl text-2xl group-hover:bg-white shadow-sm"
-                  aria-hidden="true"
+            />
+            <span class="min-w-0 flex-1">
+              <span class="flex flex-wrap items-center justify-between gap-2">
+                <span class="font-bold text-[var(--color-ink)]">{{
+                  result.title
+                }}</span>
+                <span
+                  class="text-[10px] font-bold uppercase tracking-wider text-[var(--color-muted)]"
+                  >{{ resultTypeLabel(result.type) }}</span
                 >
-                  {{ resultTypeEmoji(result.type) }}
-                </div>
-                <div class="flex-1">
-                  <div class="flex items-center justify-between gap-2">
-                    <h4
-                      class="font-bold text-slate-900 group-hover:text-[#0038A8] transition-colors"
-                    >
-                      {{ result.title }}
-                    </h4>
-                    <span
-                      class="text-[10px] font-black uppercase tracking-widest px-2 py-1 bg-slate-100 text-slate-500 rounded-md"
-                    >
-                      {{ resultTypeLabel(result.type) }}
-                    </span>
-                  </div>
-                  <p class="text-sm text-slate-500 mt-0.5">
-                    {{ result.subtitle }}
-                  </p>
-                  <p
-                    v-if="result.description"
-                    class="text-sm text-slate-400 mt-2 line-clamp-1 italic"
-                  >
-                    {{ result.description }}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div
-              class="bg-slate-50 p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-widest"
-            >
-              <span aria-live="polite"
-                >{{ searchResults.length }} resultados encontrados</span
-              >
-              <span>Usa flechas para navegar</span>
-            </div>
-          </div>
-          <p v-if="searchError" role="alert" class="mt-3 text-white">
-            {{ searchError }}
-            <button @click="handleSearch" class="underline font-bold">
-              Reintentar búsqueda
-            </button>
+              </span>
+              <span class="mt-0.5 block text-sm text-[var(--color-muted)]">{{
+                result.subtitle
+              }}</span>
+            </span>
+          </button>
+        </div>
+        <p
+          v-if="searchError"
+          role="alert"
+          class="mt-2 text-sm text-[var(--color-warning)]"
+        >
+          {{ searchError }}
+          <button
+            type="button"
+            class="font-bold underline"
+            @click="handleSearch"
+          >
+            Reintentar búsqueda
+          </button>
+        </p>
+        <p
+          v-else-if="
+            searchQuery.trim().length >= 2 &&
+            !searchLoading &&
+            !searchResults.length
+          "
+          role="status"
+          class="mt-2 text-sm text-[var(--color-muted)]"
+        >
+          No encontramos resultados.
+        </p>
+      </div>
+    </section>
+
+    <nav
+      class="mb-7 grid grid-cols-3 gap-2 sm:gap-4"
+      aria-label="¿Qué necesitas hoy?"
+    >
+      <NuxtLink to="/transporte" class="service-choice">
+        <Bus
+          class="h-6 w-6 shrink-0 text-[var(--color-blue)]"
+          aria-hidden="true"
+        />
+        <div><strong>Transporte</strong><span>Rutas y paradas</span></div>
+      </NuxtLink>
+      <NuxtLink to="/eventos" class="service-choice">
+        <CalendarDays
+          class="h-6 w-6 shrink-0 text-[var(--color-coral)]"
+          aria-hidden="true"
+        />
+        <div><strong>Eventos</strong><span>Encuentra un plan</span></div>
+      </NuxtLink>
+      <NuxtLink to="/gastronomia" class="service-choice">
+        <UtensilsCrossed
+          class="h-6 w-6 shrink-0 text-[var(--color-ochre)]"
+          aria-hidden="true"
+        />
+        <div><strong>Dónde comer</strong><span>Para tu antojo</span></div>
+      </NuxtLink>
+    </nav>
+
+    <section
+      class="fade-rise mb-8 surface p-5 md:p-6"
+      aria-labelledby="live-status-heading"
+      style="animation-delay: 80ms"
+    >
+      <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2
+            id="live-status-heading"
+            class="brand-display text-2xl font-bold text-[var(--color-ink)]"
+          >
+            Transporte ahora
+          </h2>
+          <p class="mt-1 text-sm text-[var(--color-muted)]">
+            Unidades reportadas y estado de la última lectura.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <p
+            class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider"
+            role="status"
+            :class="
+              serviceHealthTone === 'healthy'
+                ? 'bg-emerald-100 text-emerald-800'
+                : serviceHealthTone === 'warning'
+                  ? 'bg-[var(--color-ochre-soft)] text-[var(--color-warning)]'
+                  : 'bg-[var(--color-cream-deep)] text-[var(--color-muted)]'
+            "
+          >
+            {{ serviceHealthLabel }}
+          </p>
+          <button
+            type="button"
+            class="btn-primary !px-4 !py-2 text-sm"
+            :disabled="trackingLoading"
+            @click="refreshTracking"
+          >
+            {{ trackingLoading ? 'Actualizando…' : 'Actualizar señales' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-[auto_1fr] sm:items-center">
+        <div
+          class="rounded-2xl bg-[var(--color-blue-soft)] px-5 py-4 text-[var(--color-navy)]"
+        >
+          <p class="text-xs font-bold uppercase tracking-[0.16em]">
+            Unidades reportadas
           </p>
           <p
-            v-else-if="
-              searchQuery.trim().length >= 2 &&
-              !searchLoading &&
-              !searchResults.length
-            "
-            role="status"
-            class="mt-3 text-white"
-          >
-            No encontramos resultados.
-          </p>
-        </div>
-      </div>
-    </header>
-
-    <main>
-      <!-- Live Status Section -->
-      <section
-        class="py-12 bg-white border-b border-slate-100"
-        aria-labelledby="live-status-heading"
-      >
-        <h3 id="live-status-heading" class="sr-only">
-          Estado del servicio ahora mismo
-        </h3>
-        <div class="max-w-5xl mx-auto px-6">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-              <div class="flex items-center gap-3 mb-2 text-[#0038A8]">
-                <span class="text-2xl" aria-hidden="true">🚍</span>
-                <span class="font-bold uppercase text-sm tracking-widest"
-                  >Unidades reportadas</span
-                >
-              </div>
-              <div
-                class="text-4xl font-black text-slate-800 tracking-tighter"
-                aria-live="polite"
-              >
-                {{ vehicleCount !== null ? vehicleCount : '...' }}
-              </div>
-              <p class="text-slate-500 text-sm mt-1 italic">
-                {{
-                  trackingStale
-                    ? 'Lectura anterior'
-                    : trackingLoading
-                      ? 'Consultando señales…'
-                      : 'Señales de transporte'
-                }}
-              </p>
-            </div>
-
-            <NuxtLink
-              to="/eventos"
-              class="group bg-slate-50 p-6 rounded-2xl border border-slate-100 transition hover:border-[#CE1126]/30 hover:shadow-sm"
-            >
-              <div class="flex items-center gap-3 mb-2 text-[#CE1126]">
-                <span class="text-2xl" aria-hidden="true">🎭</span>
-                <span class="font-bold uppercase text-sm tracking-widest"
-                  >Agenda Cultural</span
-                >
-              </div>
-              <div
-                class="text-4xl font-black text-slate-800 tracking-tighter group-hover:text-[#CE1126]"
-              >
-                Nueva
-              </div>
-              <p class="text-slate-500 text-sm mt-1 italic">
-                Explora qué está pasando en Caguas
-              </p>
-            </NuxtLink>
-
-            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-              <div class="flex items-center gap-3 mb-2 text-[#FFD700]">
-                <span class="text-2xl" aria-hidden="true">✨</span>
-                <span class="font-bold uppercase text-sm tracking-widest"
-                  >App Status</span
-                >
-              </div>
-              <div class="text-4xl font-black text-slate-800 tracking-tighter">
-                Closed Beta
-              </div>
-              <p class="text-slate-500 text-sm mt-1 italic">
-                Solo por invitación
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Operational Health -->
-      <section
-        class="py-12 bg-slate-900 text-white border-b border-slate-800"
-        aria-labelledby="health-heading"
-      >
-        <div class="max-w-5xl mx-auto px-6">
-          <div
-            class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8"
-          >
-            <div>
-              <p
-                class="text-sm font-black uppercase tracking-[0.2em] text-[#FFD700] mb-2"
-              >
-                Salud operativa
-              </p>
-              <h3 id="health-heading" class="text-3xl font-bold">
-                ¿Está corriendo bien el sistema?
-              </h3>
-              <p class="text-slate-300 mt-2 max-w-2xl">
-                Resumen público del tracking para saber si el servicio está
-                saludable, degradado o sin señal antes de inspeccionar cada
-                unidad.
-              </p>
-            </div>
-            <div
-              class="inline-flex items-center rounded-full px-4 py-2 text-xs font-black uppercase tracking-widest"
-              role="status"
-              :class="
-                serviceHealthTone === 'healthy'
-                  ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/40'
-                  : serviceHealthTone === 'warning'
-                    ? 'bg-amber-500/15 text-amber-100 ring-1 ring-amber-300/40'
-                    : serviceHealthTone === 'critical'
-                      ? 'bg-rose-500/15 text-rose-100 ring-1 ring-rose-300/40'
-                      : 'bg-white/10 text-slate-100 ring-1 ring-white/15'
-              "
-            >
-              {{ serviceHealthLabel }}
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <article
-              v-for="card in trackingHealthCards"
-              :key="card.id"
-              class="rounded-3xl border p-5"
-              :class="
-                card.tone === 'healthy'
-                  ? 'border-emerald-400/30 bg-emerald-500/10'
-                  : card.tone === 'warning'
-                    ? 'border-amber-300/30 bg-amber-500/10'
-                    : card.tone === 'critical'
-                      ? 'border-rose-300/30 bg-rose-500/10'
-                      : 'border-white/10 bg-white/5'
-              "
-            >
-              <h4
-                class="text-xs font-black uppercase tracking-[0.2em] text-slate-300 mb-2"
-              >
-                {{ card.label }}
-              </h4>
-              <p
-                class="text-3xl font-black text-white leading-tight"
-                aria-live="polite"
-              >
-                {{ card.value }}
-              </p>
-              <p class="text-sm text-slate-300 mt-3 leading-relaxed">
-                {{ card.hint }}
-              </p>
-            </article>
-          </div>
-
-          <div
-            v-if="trackingAlertRoutes.length"
-            class="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6"
+            class="brand-display mt-1 text-4xl font-extrabold"
             aria-live="polite"
           >
-            <div
-              class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-4"
+            {{ vehicleCount !== null ? vehicleCount : '...' }}
+          </p>
+        </div>
+        <div class="text-sm text-[var(--color-muted)]">
+          <p
+            v-if="trackingError"
+            role="alert"
+            class="text-[var(--color-warning)]"
+          >
+            {{ trackingError }}
+          </p>
+          <p
+            v-else-if="trackingStale"
+            role="status"
+            class="text-[var(--color-warning)]"
+          >
+            La fuente no pudo actualizarse. Esta lectura es anterior.
+          </p>
+          <p v-else>
+            {{
+              trackingLoading
+                ? 'Consultando señales…'
+                : lastUpdatedLabel
+                  ? `Última lectura: ${lastUpdatedLabel}`
+                  : 'Esperando datos…'
+            }}
+          </p>
+          <p class="mt-2">
+            Consulta el recorrido y la señal de cada unidad antes de salir.
+          </p>
+          <div class="mt-3 flex flex-wrap gap-3">
+            <NuxtLink
+              to="/transporte"
+              class="font-bold text-[var(--color-blue)] underline"
+              >Rutas y paradas</NuxtLink
             >
-              <div>
-                <h4 class="text-xl font-black text-white">
-                  Rutas que necesitan atención
-                </h4>
-                <p class="text-sm text-slate-300 mt-1">
-                  Se listan solo las rutas retrasadas, offline o sin señal para
-                  que el ciudadano entienda rápido si hay degradación real.
-                </p>
-              </div>
-              <span
-                class="text-xs font-black uppercase tracking-widest text-slate-300"
-              >
-                {{ trackingAlertRoutes.length }} alertas activas
-              </span>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <article
-                v-for="route in trackingAlertRoutes"
-                :key="route.id"
-                class="rounded-2xl border border-white/10 bg-slate-950/40 p-4"
-              >
-                <div class="flex items-start justify-between gap-4">
-                  <div>
-                    <p
-                      class="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-2"
-                    >
-                      Ruta {{ route.routeId || 'N/D' }}
-                    </p>
-                    <h5 class="text-lg font-black text-white">
-                      {{ route.routeName }}
-                    </h5>
-                  </div>
-                  <span
-                    class="inline-flex items-center rounded-full px-3 py-1 text-xs font-black uppercase tracking-widest"
-                    :class="
-                      route.tone === 'warning'
-                        ? 'bg-amber-500/15 text-amber-100 ring-1 ring-amber-300/40'
-                        : 'bg-rose-500/15 text-rose-100 ring-1 ring-rose-300/40'
-                    "
-                  >
-                    {{ route.label }}
-                  </span>
-                </div>
-                <p class="text-sm text-slate-300 mt-3 leading-relaxed">
-                  {{ route.hint }}
-                </p>
-              </article>
-            </div>
+            <NuxtLink
+              to="/cerca"
+              class="font-bold text-[var(--color-blue)] underline"
+              >Cerca de ti</NuxtLink
+            >
           </div>
         </div>
-      </section>
+      </div>
 
-      <!-- Live Trolley Board -->
-      <section
-        class="py-16 bg-slate-50 border-b border-slate-200"
-        aria-labelledby="trolley-board-heading"
+      <ul
+        v-if="topVehicles.length"
+        class="mt-4 divide-y divide-[var(--color-line)] border-t border-[var(--color-line)]"
+        aria-label="Unidades recientes"
       >
-        <div class="max-w-5xl mx-auto px-6">
-          <div
-            class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8"
-          >
-            <div>
-              <p
-                class="text-sm font-black uppercase tracking-[0.2em] text-[#0038A8] mb-2"
-              >
-                Trolley Board
-              </p>
-              <h3
-                id="trolley-board-heading"
-                class="text-3xl font-bold text-slate-900"
-              >
-                Señales de transporte por Caguas
-              </h3>
-              <p class="text-slate-600 mt-2 max-w-2xl">
-                Mira qué unidades están activas ahora mismo, su ruta y la
-                próxima parada reportada.
-              </p>
-            </div>
-            <p
-              class="text-sm text-slate-500 font-bold"
-              role="status"
-              aria-live="polite"
-            >
+        <li
+          v-for="vehicle in topVehicles"
+          :key="vehicle.assetId"
+          class="grid grid-cols-2 items-center gap-x-4 gap-y-1 py-3 sm:flex sm:flex-wrap sm:gap-x-6"
+        >
+          <div class="col-span-2 min-w-0 sm:flex-1">
+            <p class="text-sm font-bold">
+              {{ vehicle.routeName || 'Ruta por confirmar' }} ·
+              {{ vehicle.label }}
+            </p>
+            <p class="mt-1 text-sm text-[var(--color-muted)]">
               {{
-                lastUpdatedLabel
-                  ? `Última lectura: ${lastUpdatedLabel}`
-                  : 'Esperando datos en vivo…'
+                vehicle.nextStop?.name
+                  ? `Próxima parada: ${vehicle.nextStop.name}`
+                  : 'Parada por confirmar'
               }}
             </p>
           </div>
+          <p class="text-xs font-semibold text-[var(--color-muted)]">
+            {{ vehicleSignal(vehicle).label }}
+          </p>
+          <NuxtLink
+            :to="`/transporte?assetId=${vehicle.assetId}`"
+            class="inline-flex min-h-11 items-center justify-self-end text-sm font-bold text-[var(--color-blue)] underline"
+            >Ver unidad y ruta</NuxtLink
+          >
+        </li>
+      </ul>
+      <p
+        v-else-if="!trackingLoading && vehicleCount === 0"
+        class="mt-4 rounded-xl bg-[var(--color-cream)] px-4 py-3 text-sm text-[var(--color-muted)]"
+        role="status"
+      >
+        No recibimos señales de unidades ahora. Esto no confirma una
+        interrupción.
+      </p>
+    </section>
 
-          <div class="mb-6 flex flex-wrap items-center gap-4">
-            <button
-              @click="refreshTracking"
-              :disabled="trackingLoading"
-              class="rounded-full bg-[#0038A8] px-5 py-2 font-bold text-white disabled:opacity-50"
+    <div class="grid gap-8 lg:grid-cols-2">
+      <section
+        class="fade-rise"
+        aria-labelledby="home-events-heading"
+        style="animation-delay: 140ms"
+      >
+        <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2
+              id="home-events-heading"
+              class="brand-display text-2xl font-bold"
             >
-              {{ trackingLoading ? 'Actualizando…' : 'Actualizar señales' }}
-            </button>
-            <NuxtLink
-              to="/transporte"
-              class="font-bold text-[#0038A8] underline"
-              >Ver rutas y paradas</NuxtLink
-            >
-            <p v-if="trackingError" role="alert" class="text-amber-800">
-              {{ trackingError }}
+              Próximos eventos
+            </h2>
+            <p class="mt-1 text-sm text-[var(--color-muted)]">
+              Una selección corta de la agenda pública.
             </p>
-            <p v-else-if="trackingStale" role="status" class="text-amber-800">
-              La fuente no pudo actualizarse. Esta lectura es anterior.
-            </p>
           </div>
-          <p class="mb-6 text-sm text-slate-600">
-            Horario municipal publicado: trolley lunes a viernes, 7:00 a.
-            m.–6:00 p. m., Puerto Rico. Una lectura sin unidades no confirma una
-            interrupción del servicio.
-          </p>
-          <div v-if="topVehicles.length" class="space-y-8">
-            <div
-              v-if="upcomingStops.length"
-              class="space-y-4"
-              aria-label="Próximas paradas con llegadas visibles"
-            >
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <h4 class="text-xl font-black text-slate-900">
-                    Próximas paradas con movimiento
-                  </h4>
-                  <p class="text-sm text-slate-600">
-                    Agrupamos las llegadas visibles por parada para detectar
-                    rápido dónde viene el próximo trolley.
-                  </p>
-                </div>
-                <span
-                  class="text-xs font-black uppercase tracking-widest text-slate-500"
-                >
-                  {{ upcomingStops.length }} paradas visibles
-                </span>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                <article
-                  v-for="stop in upcomingStops"
-                  :key="stop.stopKey"
-                  class="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 flex flex-col gap-4"
-                >
-                  <div class="flex items-start justify-between gap-4">
-                    <div>
-                      <p
-                        class="text-xs font-black uppercase tracking-[0.2em] text-slate-500 mb-2"
-                      >
-                        Próxima parada visible
-                      </p>
-                      <h5
-                        class="text-lg font-black text-slate-900 leading-tight"
-                      >
-                        {{ stop.name }}
-                      </h5>
-                      <p class="text-sm text-slate-600 mt-1">
-                        {{
-                          stop.routeNames.length
-                            ? stop.routeNames.join(' · ')
-                            : routeIdListCopy(stop.routeIds)
-                        }}
-                      </p>
-                    </div>
-                    <span
-                      class="inline-flex items-center rounded-full bg-[#0038A8]/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-[#0038A8]"
-                    >
-                      {{ etaCopy(stop.nextArrivalEtaSeconds) }}
-                    </span>
-                  </div>
-
-                  <dl class="grid grid-cols-2 gap-3 text-sm">
-                    <div
-                      class="rounded-2xl bg-slate-50 px-4 py-3 border border-slate-100"
-                    >
-                      <dt
-                        class="text-xs font-black uppercase tracking-widest text-slate-500 mb-1"
-                      >
-                        Llegadas visibles
-                      </dt>
-                      <dd class="text-slate-900 font-bold">
-                        {{ stop.arrivalCount }}
-                      </dd>
-                    </div>
-                    <div
-                      class="rounded-2xl bg-slate-50 px-4 py-3 border border-slate-100"
-                    >
-                      <dt
-                        class="text-xs font-black uppercase tracking-widest text-slate-500 mb-1"
-                      >
-                        En vivo ahora
-                      </dt>
-                      <dd class="text-slate-900 font-bold">
-                        {{ stop.liveVehicleCount }}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  <ul class="space-y-2 text-sm text-slate-600">
-                    <li
-                      v-for="vehicle in stop.vehicles.slice(0, 3)"
-                      :key="`${stop.stopKey}-${vehicle.assetId}`"
-                      class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 border border-slate-100"
-                    >
-                      <div>
-                        <p class="font-bold text-slate-900">
-                          {{ vehicle.label }}
-                        </p>
-                        <p
-                          class="text-xs uppercase tracking-widest text-slate-500 mt-1"
-                        >
-                          {{ vehicle.routeName || `Ruta ${vehicle.routeId}` }}
-                        </p>
-                      </div>
-                      <span
-                        class="text-xs font-black uppercase tracking-widest text-slate-500 text-right"
-                      >
-                        {{ etaCopy(vehicle.nextStopEtaSeconds) }}
-                      </span>
-                    </li>
-                  </ul>
-                </article>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <article
-                v-for="vehicle in topVehicles"
-                :key="vehicle.assetId"
-                class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-col gap-5"
-              >
-                <div class="flex items-start justify-between gap-4">
-                  <div>
-                    <p
-                      class="text-xs font-black uppercase tracking-[0.2em] text-[#0038A8] mb-2"
-                    >
-                      {{ vehicle.routeName || 'Ruta activa' }}
-                    </p>
-                    <h4
-                      class="text-2xl font-black text-slate-900 leading-tight"
-                    >
-                      {{ vehicle.label }}
-                    </h4>
-                  </div>
-                  <span
-                    class="inline-flex items-center rounded-full px-3 py-1 text-xs font-black uppercase tracking-widest"
-                    :class="
-                      vehicle.freshnessLabel === 'live'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : vehicle.freshnessLabel === 'stale'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-slate-100 text-slate-600'
-                    "
-                  >
-                    {{ freshnessCopy(vehicle.freshnessLabel) }}
-                  </span>
-                </div>
-
-                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  <div
-                    class="rounded-2xl bg-slate-50 px-4 py-3 border border-slate-100"
-                  >
-                    <dt
-                      class="text-xs font-black uppercase tracking-widest text-slate-500 mb-1"
-                    >
-                      Próxima parada
-                    </dt>
-                    <dd class="text-slate-900 font-bold">
-                      {{ vehicle.nextStop?.name || 'Sin parada reportada' }}
-                    </dd>
-                    <p class="text-slate-500 mt-1">
-                      {{ etaCopy(vehicle.nextStopEtaSeconds) }}
-                    </p>
-                  </div>
-                  <div
-                    class="rounded-2xl bg-slate-50 px-4 py-3 border border-slate-100"
-                  >
-                    <dt
-                      class="text-xs font-black uppercase tracking-widest text-slate-500 mb-1"
-                    >
-                      Dirección
-                    </dt>
-                    <dd class="text-slate-900 font-bold">
-                      {{ directionLabel(vehicle) }}
-                    </dd>
-                  </div>
-                  <div
-                    class="rounded-2xl bg-slate-50 px-4 py-3 border border-slate-100"
-                  >
-                    <dt
-                      class="text-xs font-black uppercase tracking-widest text-slate-500 mb-1"
-                    >
-                      Estado
-                    </dt>
-                    <dd class="text-slate-900 font-bold capitalize">
-                      {{ vehicle.statusLabel }}
-                    </dd>
-                  </div>
-                  <div
-                    class="rounded-2xl bg-slate-50 px-4 py-3 border border-slate-100"
-                  >
-                    <dt
-                      class="text-xs font-black uppercase tracking-widest text-slate-500 mb-1"
-                    >
-                      Actualización
-                    </dt>
-                    <dd class="text-slate-900 font-bold">
-                      {{ freshnessTime(vehicle.freshnessSeconds) }}
-                    </dd>
-                  </div>
-                </dl>
-
-                <p
-                  class="text-sm text-slate-600 leading-relaxed min-h-[2.5rem]"
-                >
-                  {{
-                    vehicle.message ||
-                    'Sin mensaje operativo reportado por la unidad.'
-                  }}
-                </p>
-              </article>
-            </div>
-
-            <div v-if="routeCards.length" class="space-y-4">
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <h4 class="text-xl font-black text-slate-900">
-                    Estado por ruta
-                  </h4>
-                  <p class="text-sm text-slate-600">
-                    Cada tarjeta ya sale resumida desde el API para web y app,
-                    sin recomputar el snapshot completo en cliente.
-                  </p>
-                </div>
-                <span
-                  class="text-xs font-black uppercase tracking-widest text-slate-500"
-                >
-                  {{ routeCards.length }} rutas visibles
-                </span>
-              </div>
-
-              <div
-                class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
-                aria-label="Resumen por ruta"
-              >
-                <article
-                  v-for="route in routeCards"
-                  :key="route.routeId"
-                  class="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 flex flex-col gap-4"
-                >
-                  <div class="flex items-start justify-between gap-4">
-                    <div>
-                      <p
-                        class="text-xs font-black uppercase tracking-[0.2em] text-slate-500 mb-2"
-                      >
-                        Ruta {{ route.routeId }}
-                      </p>
-                      <h5
-                        class="text-lg font-black text-slate-900 leading-tight"
-                      >
-                        {{ route.routeName || 'Ruta activa' }}
-                      </h5>
-                      <p class="text-sm text-slate-600 mt-1">
-                        {{ directionLabel(route) }}
-                      </p>
-                    </div>
-                    <span
-                      class="inline-flex items-center rounded-full px-3 py-1 text-xs font-black uppercase tracking-widest"
-                      :class="
-                        route.liveVehicles > 0
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : route.staleVehicles > 0
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-slate-100 text-slate-600'
-                      "
-                    >
-                      {{ routeStatusCopy(route) }}
-                    </span>
-                  </div>
-
-                  <dl class="grid grid-cols-2 gap-3 text-sm">
-                    <div
-                      class="rounded-2xl bg-slate-50 px-4 py-3 border border-slate-100"
-                    >
-                      <dt
-                        class="text-xs font-black uppercase tracking-widest text-slate-500 mb-1"
-                      >
-                        Unidades
-                      </dt>
-                      <dd class="text-slate-900 font-bold">
-                        {{ route.totalVehicles }}
-                      </dd>
-                    </div>
-                    <div
-                      class="rounded-2xl bg-slate-50 px-4 py-3 border border-slate-100"
-                    >
-                      <dt
-                        class="text-xs font-black uppercase tracking-widest text-slate-500 mb-1"
-                      >
-                        En vivo
-                      </dt>
-                      <dd class="text-slate-900 font-bold">
-                        {{ route.liveVehicles }}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  <div
-                    class="rounded-2xl bg-slate-50 px-4 py-3 border border-slate-100 text-sm"
-                  >
-                    <p
-                      class="text-xs font-black uppercase tracking-widest text-slate-500 mb-1"
-                    >
-                      Unidad líder
-                    </p>
-                    <p class="text-slate-900 font-bold">
-                      {{ route.leadVehicle?.label || 'Sin unidad priorizada' }}
-                    </p>
-                    <p class="text-slate-600 mt-1">
-                      {{
-                        route.leadVehicle?.nextStopName
-                          ? `Próxima parada: ${route.leadVehicle.nextStopName}`
-                          : 'Sin próxima parada reportada'
-                      }}
-                    </p>
-                    <p class="text-slate-500 mt-1">
-                      {{
-                        route.leadVehicle?.nextStopName
-                          ? etaCopy(route.leadVehicle.nextStopEtaSeconds)
-                          : 'Sin ETA local disponible'
-                      }}
-                    </p>
-                    <p class="text-slate-500 mt-1">
-                      {{
-                        route.leadVehicle
-                          ? `${statusCopy(route.leadVehicle.statusLabel)} · ${freshnessTime(route.leadVehicle.freshnessSeconds)}`
-                          : 'Sin telemetría disponible'
-                      }}
-                    </p>
-                  </div>
-
-                  <p class="text-sm text-slate-500">
-                    {{
-                      route.lastReportedAt
-                        ? `Último reporte de la ruta: ${formatDateTime(route.lastReportedAt)}`
-                        : 'La ruta no tiene hora válida reportada todavía.'
-                    }}
-                  </p>
-                </article>
-              </div>
-            </div>
-          </div>
-
-          <div
-            v-else
-            class="bg-white border border-slate-200 rounded-3xl p-8 text-center text-slate-600"
-            aria-live="polite"
-          >
-            No hay unidades activas reportadas ahora mismo. Vuelve a intentar en
-            unos minutos.
-          </div>
-        </div>
-      </section>
-
-      <!-- Roadmap / Updates -->
-      <section id="roadmap" class="py-20 bg-slate-50">
-        <div class="max-w-5xl mx-auto px-6">
-          <h3 class="text-3xl font-bold mb-12 flex items-center gap-3">
-            <span class="bg-[#0038A8] text-white p-2 rounded-lg text-sm"
-              >Update Log</span
-            >
-            Hoja de Ruta Criolla
-          </h3>
-
-          <div class="space-y-8">
-            <div class="flex gap-6">
-              <div class="flex flex-col items-center">
-                <div
-                  class="w-4 h-4 rounded-full bg-[#0038A8] ring-4 ring-blue-100"
-                ></div>
-                <div class="w-1 h-full bg-slate-200"></div>
-              </div>
-              <div class="pb-8">
-                <h4 class="text-xl font-bold text-slate-800">
-                  Lanzamiento del Landing & API Beta
-                </h4>
-                <p class="text-slate-500 mb-2">15 de febrero, 2026</p>
-                <div
-                  class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-slate-600"
-                >
-                  Iniciamos la comunicación oficial. El API ya sirve datos
-                  reales de los trolleys de Caguas y hemos desplegado este
-                  portal para mantener a la comunidad informada.
-                </div>
-              </div>
-            </div>
-
-            <div class="flex gap-6">
-              <div class="flex flex-col items-center">
-                <div class="w-4 h-4 rounded-full bg-slate-300"></div>
-                <div class="w-1 h-full bg-slate-200"></div>
-              </div>
-              <div class="pb-8">
-                <h4 class="text-xl font-bold text-slate-600">
-                  Integración de Eventos Culturales
-                </h4>
-                <p class="text-slate-600 mb-2">Q1 2026</p>
-                <p class="text-slate-600 italic">
-                  Sincronización con el calendario municipal y centros
-                  culturales.
-                </p>
-              </div>
-            </div>
-
-            <div class="flex gap-6">
-              <div class="flex flex-col items-center">
-                <div class="w-4 h-4 rounded-full bg-slate-300"></div>
-              </div>
-              <div class="">
-                <h4 class="text-xl font-bold text-slate-600">
-                  IA Criolla & Gastronomía
-                </h4>
-                <p class="text-slate-600 mb-2">Q2 2026</p>
-                <p class="text-slate-600 italic">
-                  Recomendaciones personalizadas basadas en tus gustos y
-                  ubicación.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Beta Testing Form -->
-      <section id="beta" class="py-20 bg-white" aria-labelledby="beta-heading">
-        <div class="max-w-3xl mx-auto px-6 text-center">
-          <div class="inline-block p-4 rounded-3xl bg-blue-50 mb-6">
-            <span class="text-5xl" role="img" aria-label="Laboratorio">🧪</span>
-          </div>
-          <h3 id="beta-heading" class="text-4xl font-black mb-4">
-            ¿Quieres probar el app antes que nadie?
-          </h3>
-          <p class="text-xl text-slate-600 mb-10">
-            Registra tu interés para recibir novedades sobre las pruebas en
-            iPhone o Android cuando estén disponibles.
-          </p>
-
-          <form
-            @submit.prevent="submitBeta"
-            class="flex flex-col gap-4 max-w-xl mx-auto"
-            aria-label="Formulario de registro para beta"
-          >
-            <input
-              v-model="email"
-              type="email"
-              required
-              placeholder="Tu email (ej. caguano@gmail.com)"
-              class="flex-1 px-6 py-4 rounded-full border-2 border-slate-100 focus:border-[#0038A8] outline-none transition-all text-lg shadow-inner"
-              aria-label="Email para invitación beta"
-            />
-            <select
-              v-model="platform"
-              aria-label="Plataforma para la beta"
-              class="rounded-full border-2 border-slate-100 px-6 py-4"
-            >
-              <option value="both">iPhone y Android</option>
-              <option value="ios">iPhone</option>
-              <option value="android">Android</option>
-            </select>
-            <button
-              type="submit"
-              :disabled="loading"
-              class="bg-[#0038A8] text-white px-10 py-4 rounded-full font-bold text-lg hover:bg-[#002a7f] transition-all disabled:opacity-50"
-            >
-              {{ loading ? 'Enviando...' : 'Pedir Acceso' }}
-            </button>
-          </form>
-          <p class="mt-4 text-sm text-slate-500">
-            Guardaremos tu email, plataforma y fecha durante 90 días para
-            gestionar la beta. Solo los administradores de nuestra cuenta de
-            Cloudflare pueden acceder a estos datos.
-          </p>
-          <p v-if="betaError" role="alert" class="mt-4 text-amber-800">
-            {{ betaError }}
-          </p>
-          <p v-if="success" class="mt-4 text-green-600 font-bold" role="status">
-            Tu interés se guardó correctamente. 🍍
-          </p>
-        </div>
-      </section>
-    </main>
-
-    <!-- Footer -->
-    <footer
-      class="bg-slate-900 text-slate-300 py-12 px-6 border-t border-slate-800 text-center"
-    >
-      <div class="max-w-5xl mx-auto">
-        <div class="flex justify-center items-center gap-2 mb-6">
-          <span class="text-2xl">🍍</span>
-          <span class="font-bold text-white uppercase tracking-tighter"
-            >Criollos Caguas</span
+          <NuxtLink
+            to="/eventos"
+            class="inline-flex min-h-11 items-center text-sm font-bold text-[var(--color-coral)] underline"
+            >Ver agenda</NuxtLink
           >
         </div>
-        <p class="mb-4">
-          Un proyecto para modernizar el Valle del Turabo con tecnología
-          abierta.
+
+        <p
+          v-if="!eventsFeed && !eventsError"
+          role="status"
+          class="surface p-4 text-sm text-[var(--color-muted)]"
+        >
+          Cargando eventos…
         </p>
         <div
-          class="flex justify-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-300"
+          v-else-if="
+            (eventsError || eventsFeed?.metadata?.state === 'unavailable') &&
+            !events.length
+          "
+          role="alert"
+          class="surface border-[var(--color-ochre)] bg-[var(--color-ochre-soft)] p-4"
         >
-          <span>Hecho con Pasión</span>
-          <span>•</span>
-          <span>Caguas, PR</span>
-          <span>•</span>
-          <span>2026</span>
+          <p class="font-bold">No pudimos cargar eventos</p>
+          <button
+            type="button"
+            class="mt-2 font-bold text-[var(--color-navy)] underline"
+            @click="refreshEvents"
+          >
+            Reintentar
+          </button>
         </div>
-      </div>
-    </footer>
-  </div>
+        <p
+          v-else-if="!events.length"
+          role="status"
+          class="surface p-4 text-sm text-[var(--color-muted)]"
+        >
+          No hay eventos visibles ahora.
+          <NuxtLink to="/eventos" class="font-bold underline"
+            >Abrir agenda</NuxtLink
+          >
+        </p>
+        <ul v-else class="space-y-3">
+          <li
+            v-for="item in events"
+            :key="item.id"
+            class="surface flex gap-3 p-3"
+          >
+            <div
+              v-if="item.imageUrl"
+              class="hidden h-20 w-20 shrink-0 overflow-hidden rounded-lg sm:block"
+            >
+              <img
+                :src="item.imageUrl"
+                :alt="item.imageAlt || ''"
+                class="h-full w-full object-cover"
+                loading="lazy"
+              />
+            </div>
+            <div class="min-w-0">
+              <p
+                class="text-xs font-bold uppercase tracking-wider text-[var(--color-coral)]"
+              >
+                {{ item.category || 'Evento' }}
+                <span v-if="item.rawDate"> · {{ item.rawDate }}</span>
+              </p>
+              <h3 class="mt-1 font-bold leading-snug">{{ item.title }}</h3>
+              <p
+                v-if="item.venue"
+                class="mt-1 text-sm text-[var(--color-muted)]"
+              >
+                {{ item.venue }}
+              </p>
+              <a
+                v-if="safeSourceUrl(item.sourceUrl)"
+                :href="safeSourceUrl(item.sourceUrl)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="mt-1 inline-flex min-h-11 items-center text-sm font-bold text-[var(--color-blue)] underline"
+                >Detalles en la fuente</a
+              >
+            </div>
+          </li>
+        </ul>
+        <p
+          v-if="eventsMetaLabel"
+          class="mt-3 text-xs text-[var(--color-muted)]"
+        >
+          {{ eventsMetaLabel }}
+          <button
+            type="button"
+            class="ml-2 inline-flex min-h-11 items-center font-bold underline"
+            :disabled="mounted && eventsPending"
+            @click="refreshEvents"
+          >
+            Actualizar eventos
+          </button>
+        </p>
+      </section>
+
+      <section
+        class="fade-rise"
+        aria-labelledby="home-food-heading"
+        style="animation-delay: 200ms"
+      >
+        <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="home-food-heading" class="brand-display text-2xl font-bold">
+              Dónde comer
+            </h2>
+            <p class="mt-1 text-sm text-[var(--color-muted)]">
+              Lugares del directorio gastronómico.
+            </p>
+          </div>
+          <NuxtLink
+            to="/gastronomia"
+            class="inline-flex min-h-11 items-center text-sm font-bold text-[var(--color-ochre)] underline"
+            >Ver comida</NuxtLink
+          >
+        </div>
+
+        <p
+          v-if="!foodFeed && !foodError"
+          role="status"
+          class="surface p-4 text-sm text-[var(--color-muted)]"
+        >
+          Cargando lugares…
+        </p>
+        <div
+          v-else-if="
+            (foodError || foodFeed?.metadata?.state === 'unavailable') &&
+            !places.length
+          "
+          role="alert"
+          class="surface border-[var(--color-ochre)] bg-[var(--color-ochre-soft)] p-4"
+        >
+          <p class="font-bold">No pudimos cargar lugares</p>
+          <button
+            type="button"
+            class="mt-2 font-bold text-[var(--color-navy)] underline"
+            @click="refreshFood"
+          >
+            Reintentar
+          </button>
+        </div>
+        <p
+          v-else-if="!places.length"
+          role="status"
+          class="surface p-4 text-sm text-[var(--color-muted)]"
+        >
+          No hay lugares visibles ahora.
+          <NuxtLink to="/gastronomia" class="font-bold underline"
+            >Abrir gastronomía</NuxtLink
+          >
+        </p>
+        <ul v-else class="space-y-3">
+          <li
+            v-for="item in places"
+            :key="item.id"
+            class="surface flex gap-3 p-3"
+          >
+            <div
+              v-if="item.imageUrl"
+              class="h-20 w-20 shrink-0 overflow-hidden rounded-lg"
+            >
+              <img
+                :src="item.imageUrl"
+                :alt="item.imageAlt || ''"
+                class="h-full w-full object-cover"
+                loading="lazy"
+              />
+            </div>
+            <div class="min-w-0">
+              <p
+                class="text-xs font-bold uppercase tracking-wider text-[var(--color-ochre)]"
+              >
+                {{ item.category || 'Comida' }}
+              </p>
+              <h3 class="mt-1 font-bold leading-snug">{{ item.title }}</h3>
+              <p
+                v-if="item.summary"
+                class="mt-1 line-clamp-2 text-sm text-[var(--color-muted)]"
+              >
+                {{ item.summary }}
+              </p>
+              <a
+                v-if="safeSourceUrl(item.sourceUrl)"
+                :href="safeSourceUrl(item.sourceUrl)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="mt-1 inline-flex min-h-11 items-center text-sm font-bold text-[var(--color-blue)] underline"
+                >Detalles en la fuente</a
+              >
+            </div>
+          </li>
+        </ul>
+        <p v-if="foodMetaLabel" class="mt-3 text-xs text-[var(--color-muted)]">
+          {{ foodMetaLabel }}
+          <button
+            type="button"
+            class="ml-2 inline-flex min-h-11 items-center font-bold underline"
+            :disabled="mounted && foodPending"
+            @click="refreshFood"
+          >
+            Actualizar lugares
+          </button>
+        </p>
+      </section>
+    </div>
+  </main>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import {
-  getTrackingAlertRoutes,
-  getTrackingHealthCards,
-} from '../utils/trackingHealth'
-import { searchResultDestination } from '../utils/transportLinks'
+  Bus,
+  CalendarDays,
+  MapPin,
+  Search,
+  UtensilsCrossed,
+} from 'lucide-vue-next'
+import type {
+  TrackingSnapshot,
+  TrackingVehicleSnapshot,
+} from '../../server/utils/tracking'
+import type { Evento, GastronomiaPlace } from '../../server/utils/scraper'
+import type {
+  GlobalSearchResponse,
+  SearchResult,
+} from '../../server/utils/search'
+import { getFeedStatus, type PublicFeedMetadata } from '../utils/feedStatus'
+import {
+  searchResultDestination,
+  transportVehicleSignal,
+} from '../utils/transportLinks'
 
-const email = ref('')
-const loading = ref(false)
-const success = ref(false)
-const betaError = ref('')
-const platform = ref('both')
+type HomeFeed<T> = { data: T[]; metadata?: PublicFeedMetadata; stale?: boolean }
+type Tracking = TrackingSnapshot & { stale?: boolean }
+useHead({ title: 'Tu día en Caguas' })
+const mounted = ref(false)
+
 const trackingLoading = ref(false)
 const trackingError = ref('')
 const trackingStale = ref(false)
-let trackingTimer
-let trackingController
-const vehicleCount = ref(null)
-const topVehicles = ref([])
-const routeCards = ref([])
-const upcomingStops = ref([])
-const trackingHealthCards = ref(getTrackingHealthCards(null, 0))
-const trackingAlertRoutes = ref([])
-const serviceHealthLabel = ref('Sin lectura')
-const serviceHealthTone = ref('neutral')
-const lastUpdatedLabel = ref('')
+const tracking = shallowRef<Tracking | null>(null)
+const vehicleCount = computed(() => tracking.value?.vehicles.length ?? null)
+const now = ref(Date.now())
+const topVehicles = computed(() =>
+  [...(tracking.value?.vehicles ?? [])]
+    .sort(
+      (a, b) =>
+        (vehicleSignal(a).ageSeconds ?? Infinity) -
+        (vehicleSignal(b).ageSeconds ?? Infinity)
+    )
+    .slice(0, 3)
+)
+let trackingTimer: ReturnType<typeof setInterval> | undefined
+let clockTimer: ReturnType<typeof setInterval> | undefined
+let trackingController: AbortController | undefined
+const serviceHealthLabel = computed(() => {
+  if (trackingError.value)
+    return tracking.value ? 'Lectura sin actualizar' : 'Sin lectura disponible'
+  if (!tracking.value)
+    return trackingLoading.value
+      ? 'Consultando señales'
+      : 'Sin lectura disponible'
+  if (trackingStale.value) return 'Lectura antigua'
+  if (!tracking.value.vehicles.length) return 'Sin señales reportadas'
+  return tracking.value.vehicles.some((v) => vehicleSignal(v).state === 'live')
+    ? 'Señales recientes'
+    : 'Señales anteriores'
+})
+const serviceHealthTone = computed(() =>
+  trackingError.value || trackingStale.value
+    ? 'warning'
+    : tracking.value?.vehicles.some((v) => vehicleSignal(v).state === 'live')
+      ? 'healthy'
+      : 'neutral'
+)
+const lastUpdatedLabel = computed(() =>
+  formatDateTime(tracking.value?.fetchedAt)
+)
+function vehicleSignal(vehicle: TrackingVehicleSnapshot) {
+  const signal = transportVehicleSignal(vehicle, now.value)
+  return trackingStale.value && signal.state === 'live'
+    ? { ...signal, state: 'stale', label: 'Última señal guardada' }
+    : signal
+}
+function formatDateTime(value?: string | null) {
+  if (!value || !Number.isFinite(Date.parse(value))) return ''
+  return new Intl.DateTimeFormat('es-PR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'America/Puerto_Rico',
+  }).format(new Date(value))
+}
+async function refreshTracking() {
+  if (trackingLoading.value) return
+  trackingLoading.value = true
+  const controller = new AbortController()
+  trackingController = controller
+  const timeout = setTimeout(() => controller.abort(), 10_000)
+  try {
+    const data = await $fetch<Tracking>('/api/v1/tracking', {
+      signal: controller.signal,
+      retry: 0,
+    })
+    if (!data || !Array.isArray(data.vehicles))
+      throw new Error('Respuesta sin confirmar')
+    tracking.value = data
+    trackingStale.value = data.stale === true
+    trackingError.value = ''
+    now.value = Date.now()
+  } catch {
+    trackingError.value = tracking.value
+      ? 'No pudimos actualizar. Conservamos la última lectura.'
+      : 'No pudimos consultar el transporte. Puedes reintentar.'
+    trackingStale.value = Boolean(tracking.value)
+  } finally {
+    clearTimeout(timeout)
+    trackingLoading.value = false
+  }
+}
 
-// Global Search
+// Home loads its independent sources in parallel in the browser; prerendering
+// the start screen does not depend on an external municipal source being online.
+const [eventRequest, foodRequest] = await Promise.all([
+  useFetch<HomeFeed<Evento>>('/api/v1/eventos', {
+    key: 'home-eventos',
+    query: {
+      limit: 50,
+      from: new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Puerto_Rico',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date()),
+    },
+    server: false,
+    transform: (value) => {
+      if (!value || !Array.isArray(value.data))
+        throw new Error('Agenda sin confirmar')
+      return value
+    },
+  }),
+  useFetch<HomeFeed<GastronomiaPlace>>('/api/v1/gastronomia', {
+    key: 'home-gastronomia',
+    query: { limit: 3 },
+    server: false,
+    transform: (value) => {
+      if (!value || !Array.isArray(value.data))
+        throw new Error('Directorio sin confirmar')
+      return value
+    },
+  }),
+])
+const lastEvents = shallowRef<HomeFeed<Evento> | null>(null)
+const lastFood = shallowRef<HomeFeed<GastronomiaPlace> | null>(null)
+watch(
+  eventRequest.data,
+  (value) => {
+    if (value) lastEvents.value = value
+  },
+  { immediate: true }
+)
+watch(
+  foodRequest.data,
+  (value) => {
+    if (value) lastFood.value = value
+  },
+  { immediate: true }
+)
+const eventsFeed = computed(() => eventRequest.data.value ?? lastEvents.value)
+const foodFeed = computed(() => foodRequest.data.value ?? lastFood.value)
+const events = computed(() =>
+  [...(eventsFeed.value?.data ?? [])]
+    .sort(
+      (a, b) =>
+        (a.publishedAt ? Date.parse(a.publishedAt) : Infinity) -
+        (b.publishedAt ? Date.parse(b.publishedAt) : Infinity)
+    )
+    .slice(0, 3)
+)
+const places = computed(() => foodFeed.value?.data.slice(0, 3) ?? [])
+const eventsError = eventRequest.error
+const foodError = foodRequest.error
+const eventsRefreshing = ref(false)
+const foodRefreshing = ref(false)
+const eventsPending = computed(
+  () => eventRequest.pending.value || eventsRefreshing.value
+)
+const foodPending = computed(
+  () => foodRequest.pending.value || foodRefreshing.value
+)
+async function refreshEvents() {
+  if (eventsPending.value) return
+  eventsRefreshing.value = true
+  try {
+    await eventRequest.refresh()
+  } finally {
+    eventsRefreshing.value = false
+  }
+}
+async function refreshFood() {
+  if (foodPending.value) return
+  foodRefreshing.value = true
+  try {
+    await foodRequest.refresh()
+  } finally {
+    foodRefreshing.value = false
+  }
+}
+function feedLabel(
+  metadata: PublicFeedMetadata | undefined,
+  error: boolean,
+  hasData: boolean
+) {
+  const status = getFeedStatus(metadata, { error, hasData })
+  return [
+    status.title,
+    status.updated
+      ? `Consultado ${status.updated} (Puerto Rico)`
+      : status.message,
+  ].join(' · ')
+}
+const eventsMetaLabel = computed(() =>
+  feedLabel(
+    eventsFeed.value?.metadata,
+    Boolean(eventsError.value),
+    Boolean(events.value.length)
+  )
+)
+const foodMetaLabel = computed(() =>
+  feedLabel(
+    foodFeed.value?.metadata,
+    Boolean(foodError.value),
+    Boolean(places.value.length)
+  )
+)
+function safeSourceUrl(value?: string | null) {
+  if (!value) return undefined
+  try {
+    const url = new URL(value)
+    return ['https:', 'http:'].includes(url.protocol) &&
+      !url.username &&
+      !url.password
+      ? url.href
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
 const searchQuery = ref('')
-const searchResults = ref([])
+const searchResults = ref<SearchResult[]>([])
 const searchLoading = ref(false)
-const activeIndex = ref(-1)
-let searchTimeout = null
-let searchController
-let searchVersion = 0
 const searchError = ref('')
-
-const handleSearch = () => {
+const activeIndex = ref(-1)
+let searchTimeout: ReturnType<typeof setTimeout> | undefined
+let searchController: AbortController | undefined
+let searchVersion = 0
+function handleSearch() {
   activeIndex.value = -1
-  if (searchTimeout) clearTimeout(searchTimeout)
+  clearTimeout(searchTimeout)
   searchController?.abort()
   const version = ++searchVersion
   const q = searchQuery.value.trim()
@@ -1011,59 +793,59 @@ const handleSearch = () => {
   }
   searchLoading.value = true
   searchTimeout = setTimeout(async () => {
-    searchController = new AbortController()
+    const controller = new AbortController()
+    searchController = controller
     try {
-      const data = await $fetch('/api/v1/search', {
+      const data = await $fetch<GlobalSearchResponse>('/api/v1/search', {
         query: { q },
-        signal: searchController.signal,
+        signal: controller.signal,
+        retry: 0,
       })
-      if (version === searchVersion) searchResults.value = data?.results || []
-    } catch (error) {
-      if (version === searchVersion && !searchController.signal.aborted)
+      if (!Array.isArray(data?.results))
+        throw new Error('Búsqueda sin confirmar')
+      if (version === searchVersion) searchResults.value = data.results
+    } catch {
+      if (version === searchVersion && !controller.signal.aborted)
         searchError.value = 'No pudimos buscar. Intenta de nuevo.'
     } finally {
       if (version === searchVersion) searchLoading.value = false
     }
   }, 300)
 }
-
-const resultTypeEmoji = (type) => {
-  const map = {
-    route: '🚍',
-    stop: '📍',
-    evento: '🎭',
-    gastronomia: '🍍',
+function resultTypeIcon(type: string) {
+  const icons = {
+    route: Bus,
+    stop: MapPin,
+    vehicle: Bus,
+    evento: CalendarDays,
+    gastronomia: UtensilsCrossed,
   }
-  return map[type] || '✨'
+  return icons[type as keyof typeof icons] ?? Search
 }
-
-const resultTypeLabel = (type) => {
-  const map = {
+function resultTypeLabel(type: string) {
+  const labels = {
     route: 'Ruta',
     stop: 'Parada',
+    vehicle: 'Trolley',
     evento: 'Evento',
     gastronomia: 'Comida',
   }
-  return map[type] || 'Info'
+  return labels[type as keyof typeof labels] ?? 'Resultado'
 }
-
-const navigateResult = (result) =>
-  navigateTo(searchResultDestination(result, result.title))
-
-const moveActiveIndex = (delta) => {
-  if (!searchResults.value.length) return
-  activeIndex.value =
-    (activeIndex.value + delta + searchResults.value.length) %
-    searchResults.value.length
+function navigateResult(result: SearchResult) {
+  return navigateTo(searchResultDestination(result, result.title))
 }
-
-const selectActiveResult = () => {
-  if (activeIndex.value >= 0 && searchResults.value[activeIndex.value]) {
-    navigateResult(searchResults.value[activeIndex.value])
-  }
+function moveActiveIndex(delta: number) {
+  if (searchResults.value.length)
+    activeIndex.value =
+      (activeIndex.value + delta + searchResults.value.length) %
+      searchResults.value.length
 }
-
-const closeSearch = () => {
+function selectActiveResult() {
+  const result = searchResults.value[activeIndex.value]
+  if (result) navigateResult(result)
+}
+function closeSearch() {
   searchVersion++
   clearTimeout(searchTimeout)
   searchController?.abort()
@@ -1073,201 +855,26 @@ const closeSearch = () => {
   searchQuery.value = ''
   activeIndex.value = -1
 }
-
-const freshnessCopy = (label) => {
-  if (label === 'live') return 'En vivo'
-  if (label === 'stale') return 'Demorado'
-  return 'Sin señal'
-}
-
-const freshnessTime = (seconds) => {
-  if (seconds === null || seconds === undefined) {
-    return 'Sin hora'
-  }
-
-  if (seconds < 60) {
-    return 'Hace menos de 1 min'
-  }
-
-  const minutes = Math.round(seconds / 60)
-  return `Hace ${minutes} min`
-}
-
-const etaCopy = (seconds) => {
-  if (seconds === null || seconds === undefined) {
-    return 'Sin ETA local disponible'
-  }
-
-  if (seconds <= 0) {
-    return 'Llegando a la próxima parada'
-  }
-
-  if (seconds < 60) {
-    return `Próxima parada en ~${seconds} seg`
-  }
-
-  const minutes = Math.round(seconds / 60)
-  return `Próxima parada en ~${minutes} min`
-}
-
-const statusCopy = (label) => {
-  if (label === 'moving') return 'En movimiento'
-  if (label === 'stopped') return 'Detenido'
-  if (label === 'idle') return 'En espera'
-  return 'Sin estado'
-}
-
-const routeStatusCopy = (route) => {
-  if (route.liveVehicles > 0) return 'Operando'
-  if (route.staleVehicles > 0) return 'Demorada'
-  return 'Sin señal'
-}
-
-const formatDateTime = (value) => {
-  try {
-    return new Intl.DateTimeFormat('es-PR', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-      timeZone: 'America/Puerto_Rico',
-    }).format(new Date(value))
-  } catch {
-    return value
-  }
-}
-
-const directionLabel = (vehicle) => {
-  if (vehicle.directionStartName && vehicle.directionEndName) {
-    return `${vehicle.directionStartName} → ${vehicle.directionEndName}`
-  }
-
-  if (vehicle.routeName) {
-    return vehicle.routeName
-  }
-
-  return 'Dirección no disponible'
-}
-
-const routeIdListCopy = (routeIds) => {
-  if (!Array.isArray(routeIds) || !routeIds.length) {
-    return 'Sin rutas visibles'
-  }
-
-  return routeIds.map((routeId) => `Ruta ${routeId}`).join(' · ')
-}
-
-const refreshTracking = async () => {
-  if (trackingLoading.value) return
-  trackingLoading.value = true
-  trackingController = new AbortController()
-  const timeout = setTimeout(() => trackingController.abort(), 10000)
-  try {
-    const data = await $fetch('/api/v1/tracking', {
-      signal: trackingController.signal,
-    })
-    const vehicles = Array.isArray(data?.vehicles) ? data.vehicles : []
-    vehicleCount.value = vehicles.length
-    topVehicles.value = vehicles
-      .slice()
-      .sort(
-        (a, b) =>
-          (a.freshnessSeconds ?? Infinity) - (b.freshnessSeconds ?? Infinity)
-      )
-      .slice(0, 3)
-    routeCards.value = Array.isArray(data?.summary?.routes)
-      ? data.summary.routes.slice(0, 6)
-      : []
-    upcomingStops.value = Array.isArray(data?.summary?.upcomingStops)
-      ? data.summary.upcomingStops.slice(0, 6)
-      : []
-    trackingHealthCards.value = getTrackingHealthCards(
-      data?.summary,
-      vehicles.length
-    )
-    trackingAlertRoutes.value = getTrackingAlertRoutes(data?.summary)
-    trackingStale.value = data?.stale === true
-    trackingError.value = ''
-    serviceHealthLabel.value = data?.stale
-      ? 'Lectura antigua'
-      : vehicles.length === 0
-        ? 'Sin señales reportadas'
-        : data?.summary?.serviceHealth?.status === 'healthy'
-          ? 'Señales recientes'
-          : 'Señales demoradas'
-    serviceHealthTone.value = data?.stale
-      ? 'warning'
-      : vehicles.length === 0
-        ? 'neutral'
-        : data?.summary?.serviceHealth?.status === 'healthy'
-          ? 'healthy'
-          : 'warning'
-    lastUpdatedLabel.value = data?.fetchedAt
-      ? formatDateTime(data.fetchedAt)
-      : ''
-  } catch {
-    trackingError.value =
-      'No pudimos actualizar. Reintenta; la lectura anterior se conserva si existe.'
-    trackingStale.value = vehicleCount.value !== null
-    serviceHealthLabel.value =
-      vehicleCount.value === null
-        ? 'Sin lectura disponible'
-        : 'Lectura sin actualizar'
-    serviceHealthTone.value = 'warning'
-  } finally {
-    clearTimeout(timeout)
-    trackingLoading.value = false
-  }
-}
-const onVisibility = () => {
-  if (!document.hidden) refreshTracking()
+function onVisibility() {
+  if (!document.hidden) void refreshTracking()
 }
 onMounted(() => {
-  refreshTracking()
+  mounted.value = true
+  void refreshTracking()
   trackingTimer = setInterval(() => {
-    if (!document.hidden) refreshTracking()
-  }, 30000)
+    if (!document.hidden) void refreshTracking()
+  }, 30_000)
+  clockTimer = setInterval(() => {
+    now.value = Date.now()
+  }, 15_000)
   document.addEventListener('visibilitychange', onVisibility)
 })
 onBeforeUnmount(() => {
   clearInterval(trackingTimer)
+  clearInterval(clockTimer)
   clearTimeout(searchTimeout)
   trackingController?.abort()
   searchController?.abort()
   document.removeEventListener('visibilitychange', onVisibility)
 })
-
-const submitBeta = async () => {
-  if (loading.value) return
-  loading.value = true
-  success.value = false
-  betaError.value = ''
-  try {
-    const result = await $fetch('/api/v1/beta', {
-      method: 'POST',
-      body: { email: email.value, platform: platform.value },
-    })
-    if (result?.persisted !== true)
-      throw new Error('Registration not confirmed')
-    success.value = true
-    email.value = ''
-  } catch (error) {
-    betaError.value =
-      error?.statusCode === 429
-        ? 'Alcanzaste el límite de intentos. Espera diez minutos antes de reintentar.'
-        : 'El registro beta aún no está disponible. Tu correo no se confirmó como guardado; puedes reintentar más tarde.'
-  } finally {
-    loading.value = false
-  }
-}
 </script>
-
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-
-body {
-  font-family: 'Inter', sans-serif;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-</style>

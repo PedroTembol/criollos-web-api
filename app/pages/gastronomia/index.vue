@@ -1,71 +1,109 @@
 <template>
-  <div class="flex min-h-screen flex-col bg-amber-50/30">
-    <nav
-      aria-label="Atajos de página"
-      class="sr-only focus-within:not-sr-only focus-within:px-6 focus-within:py-4 focus-within:bg-white focus-within:border-b focus-within:border-amber-200"
-    >
-      <div
-        class="mx-auto flex max-w-5xl flex-wrap gap-3 text-sm font-bold text-[#9a3412]"
-      >
-        <a
-          href="#gastronomia-filters"
-          class="rounded-full border border-[#9a3412]/20 bg-[#9a3412]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#9a3412]"
-          >Ir a filtros</a
-        >
-        <a
-          href="#gastronomia-summary-cards"
-          class="rounded-full border border-[#9a3412]/20 bg-[#9a3412]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#9a3412]"
-          >Ir a resumen editorial</a
-        >
-        <a
-          href="#gastronomia-featured"
-          class="rounded-full border border-[#9a3412]/20 bg-[#9a3412]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#9a3412]"
-          >Ir a antojos destacados</a
-        >
-        <a
-          href="#gastronomia-spotlights"
-          class="rounded-full border border-[#9a3412]/20 bg-[#9a3412]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#9a3412]"
-          >Ir a focos por categoría</a
-        >
-        <a
-          href="#gastronomia-routes"
-          class="rounded-full border border-[#9a3412]/20 bg-[#9a3412]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#9a3412]"
-          >Ir a rutas sugeridas</a
-        >
-        <a
-          href="#gastronomia-results"
-          class="rounded-full border border-[#9a3412]/20 bg-[#9a3412]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#9a3412]"
-          >Ir a la vitrina</a
-        >
-      </div>
-    </nav>
-
-    <header class="bg-[#9a3412] px-6 py-6 text-white shadow-md">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <NuxtLink to="/" class="group flex items-center gap-3">
-            <span class="text-3xl transition-transform group-hover:scale-110"
-              >🍍</span
-            >
-            <h1 class="text-xl font-bold uppercase tracking-tight">
-              Criollos <span class="text-[#FFD700]">Gastronomía</span>
-            </h1>
-          </NuxtLink>
-        </div>
-        <div
-          class="flex flex-wrap items-center gap-3 text-xs font-bold uppercase tracking-widest"
-        >
-          <NuxtLink
-            to="/discovery"
-            class="rounded-full border border-white/30 px-3 py-1.5 transition hover:bg-white/10"
-            >Discovery</NuxtLink
-          >
-          <span class="rounded-full bg-white/20 px-3 py-1.5">Beta</span>
-        </div>
-      </div>
+  <main class="page-wrap catalog-page">
+    <header class="catalog-heading">
+      <p class="catalog-eyebrow">
+        <UtensilsCrossed :size="17" aria-hidden="true" /> Sabores de Caguas
+      </p>
+      <h1 class="brand-display">¿Qué se te antoja?</h1>
+      <p>
+        Descubre dónde comer, tomar un café o compartir algo rico. Consulta
+        horarios y detalles antes de ir.
+      </p>
     </header>
+    <section
+      id="gastronomia-filters"
+      class="surface catalog-tools"
+      aria-label="Buscar lugares para comer"
+    >
+      <form
+        aria-describedby="gastronomia-results-summary"
+        @submit.prevent="applySearch"
+      >
+        <div class="catalog-search">
+          <div class="catalog-field">
+            <label for="gastronomia-search">Buscar</label>
+            <input
+              id="gastronomia-search"
+              v-model="searchDraft"
+              type="search"
+              class="field"
+              placeholder="Nombre, café o tipo de comida"
+            />
+          </div>
+          <button type="submit" class="btn-primary">
+            <Search :size="17" aria-hidden="true" /> Buscar
+          </button>
+          <button
+            v-if="hasActiveFilters"
+            type="button"
+            class="btn-secondary"
+            @click="clearFilters"
+          >
+            Limpiar
+          </button>
+        </div>
+        <details v-if="categoryOptions.length">
+          <summary>
+            <SlidersHorizontal :size="17" aria-hidden="true" /> Tipos de comida
+          </summary>
+          <fieldset>
+            <legend class="catalog-help">
+              Puedes elegir más de una categoría.
+            </legend>
+            <div class="catalog-chips">
+              <button
+                v-for="option in categoryOptions"
+                :key="option.category"
+                type="button"
+                class="catalog-chip"
+                :aria-pressed="isCategorySelected(option.category)"
+                @click="toggleCategory(option.category)"
+              >
+                <Check
+                  v-if="isCategorySelected(option.category)"
+                  :size="14"
+                  aria-hidden="true"
+                />
+                <span>{{ option.category }}</span
+                ><span v-if="option.count" class="catalog-chip-count">{{
+                  option.count
+                }}</span>
+              </button>
+            </div>
+          </fieldset>
+        </details>
 
-    <main class="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-10">
+        <div
+          v-if="activeFilters.length"
+          class="catalog-chips catalog-active"
+          aria-label="Filtros activos"
+        >
+          <button
+            v-for="filter in activeFilters"
+            :key="filter.key"
+            type="button"
+            class="catalog-chip"
+            :aria-label="`Quitar filtro de ${filter.label.toLowerCase()}: ${filter.value}`"
+            @click="removeFilter(filter.key)"
+          >
+            <span>{{ filter.label }}: {{ filter.value }}</span
+            ><X :size="14" aria-hidden="true" />
+          </button>
+        </div>
+      </form>
+    </section>
+    <section aria-labelledby="gastronomia-results-heading">
+      <div class="catalog-results-head">
+        <div>
+          <h2 id="gastronomia-results-heading" class="brand-display">
+            Dónde comer
+          </h2>
+          <p id="gastronomia-results-summary" aria-live="polite">
+            {{ resultSummary }}
+          </p>
+        </div>
+      </div>
+
       <FeedStatus
         :metadata="displayFeed?.metadata"
         :pending="pending || refreshing"
@@ -73,515 +111,114 @@
         :has-data="Boolean(displayFeed?.data?.length)"
         @retry="retryFeed"
       />
-      <section
-        id="gastronomia-filters"
-        class="mb-8 rounded-3xl border border-amber-200 bg-white p-6 shadow-sm"
-      >
-        <div
-          class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"
-        >
-          <div>
-            <p
-              class="mb-2 text-sm font-black uppercase tracking-[0.2em] text-[#9a3412]"
-            >
-              Ruta gastronómica
-            </p>
-            <h2 class="text-3xl font-black text-slate-900">
-              Explora dónde comer en Caguas con filtros rápidos
-            </h2>
-            <p class="mt-2 max-w-2xl text-slate-600">
-              Navega la vitrina gastronómica del Valle del Turabo por múltiples
-              categorías y búsqueda textual, con metadata editorial lista para
-              explorar sin mezclarla con el feed de eventos.
-            </p>
-          </div>
-          <p
-            id="gastronomia-results-summary"
-            class="text-sm text-slate-500"
-            aria-live="polite"
-          >
-            {{ resultSummary }}
-          </p>
-        </div>
-
-        <form
-          class="mt-6 flex flex-col gap-4"
-          aria-describedby="gastronomia-results-summary"
-          @submit.prevent="applySearch"
-        >
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
-            <div>
-              <label
-                for="gastronomia-search"
-                class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-              >
-                Buscar
-              </label>
-              <input
-                id="gastronomia-search"
-                v-model="searchDraft"
-                type="search"
-                placeholder="Ej. brunch, café, criolla..."
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-inner outline-none transition focus:border-[#9a3412]"
-              />
-            </div>
-
-            <div class="flex items-end gap-3">
-              <button
-                type="submit"
-                class="inline-flex flex-1 items-center justify-center rounded-2xl bg-[#CE1126] px-5 py-3 text-sm font-black uppercase tracking-widest text-white transition hover:bg-[#b00e20]"
-              >
-                Filtrar
-              </button>
-              <button
-                v-if="hasActiveFilters"
-                type="button"
-                class="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                @click="clearFilters"
-              >
-                Limpiar
-              </button>
-            </div>
-          </div>
-
-          <fieldset
-            class="rounded-2xl border border-amber-100 bg-amber-50/40 p-4"
-          >
-            <legend
-              class="px-2 text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-            >
-              Categorías visibles
-            </legend>
-            <div
-              class="mt-3 flex flex-wrap gap-2"
-              aria-label="Selecciona una o más categorías gastronómicas"
-            >
-              <button
-                v-for="option in categoryOptions"
-                :key="option.category"
-                type="button"
-                class="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-[#9a3412]"
-                :class="
-                  isCategorySelected(option.category)
-                    ? 'border-[#9a3412] bg-[#9a3412] text-white shadow-sm'
-                    : 'border-[#9a3412]/20 bg-white text-[#9a3412] hover:border-[#9a3412]/40 hover:bg-[#9a3412]/5'
-                "
-                :aria-pressed="isCategorySelected(option.category)"
-                @click="toggleCategory(option.category)"
-              >
-                <span>{{ option.category }}</span>
-                <span
-                  class="rounded-full px-2 py-0.5 text-xs font-black"
-                  :class="
-                    isCategorySelected(option.category)
-                      ? 'bg-white/20 text-white'
-                      : 'bg-[#9a3412]/10 text-[#9a3412]'
-                  "
-                >
-                  {{ option.count }}
-                </span>
-              </button>
-            </div>
-            <p class="mt-3 text-sm text-slate-500">
-              Puedes combinar varias categorías y compartir el resultado con
-              `?category=` en la URL.
-            </p>
-          </fieldset>
-
-          <div
-            v-if="activeFilters.length"
-            class="flex flex-wrap items-center gap-2"
-            aria-live="polite"
-            aria-label="Filtros activos"
-          >
-            <span
-              class="text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-              >Activos</span
-            >
-            <button
-              v-for="filter in activeFilters"
-              :key="filter.key"
-              type="button"
-              class="inline-flex items-center gap-2 rounded-full border border-[#9a3412]/20 bg-[#9a3412]/5 px-3 py-1.5 text-sm font-bold text-[#9a3412] transition hover:border-[#9a3412]/40 hover:bg-[#9a3412]/10"
-              :aria-label="`Quitar filtro de ${filter.label.toLowerCase()}: ${filter.value}`"
-              @click="removeFilter(filter.key)"
-            >
-              <span>{{ filter.label }}: {{ filter.value }}</span>
-              <span aria-hidden="true">✕</span>
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section
-        id="gastronomia-summary-cards"
-        class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3"
-        aria-label="Resumen editorial de la vitrina gastronómica visible"
-      >
-        <article
-          v-for="card in summaryCards"
-          :key="card.id"
-          class="rounded-3xl border border-amber-200/70 bg-white p-5 shadow-sm"
-        >
-          <p
-            class="text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-          >
-            {{ card.label }}
-          </p>
-          <h3 class="mt-3 text-2xl font-black text-slate-900 leading-tight">
-            {{ card.value }}
-          </h3>
-          <p class="mt-3 text-sm text-slate-600 leading-relaxed">
-            {{ card.hint }}
-          </p>
-        </article>
-      </section>
-
-      <section
-        v-if="featuredPlaceCards.length"
-        id="gastronomia-featured"
-        class="mb-8 rounded-3xl border border-amber-200 bg-white p-6 shadow-sm"
-        aria-label="Antojos destacados de la vitrina gastronómica visible"
-      >
-        <div
-          class="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between"
-        >
-          <div>
-            <p
-              class="text-xs font-black uppercase tracking-[0.2em] text-[#9a3412]"
-            >
-              Decide rápido
-            </p>
-            <h2 class="mt-2 text-2xl font-black text-slate-900">
-              Antojos destacados del subset visible
-            </h2>
-          </div>
-          <p class="max-w-2xl text-sm text-slate-500">
-            Picks concretos seleccionados por el API desde las categorías
-            visibles, priorizando variedad, foto y enlace a detalles para
-            reducir pasos antes de salir.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-4">
-          <article
-            v-for="placeCard in featuredPlaceCards"
-            :key="placeCard.id"
-            class="flex flex-col overflow-hidden rounded-3xl border border-amber-100 bg-amber-50/60"
-          >
-            <div
-              v-if="placeCard.imageUrl"
-              class="h-36 overflow-hidden bg-amber-100"
-            >
-              <img
-                :src="placeCard.imageUrl"
-                :alt="placeCard.imageAlt || `Foto de ${placeCard.title}`"
-                class="h-full w-full object-cover"
-                loading="lazy"
-              />
-            </div>
-            <div class="flex flex-1 flex-col p-5">
-              <p
-                class="text-xs font-black uppercase tracking-[0.2em] text-amber-700"
-              >
-                {{ placeCard.category }}
-              </p>
-              <h3 class="mt-3 text-xl font-black leading-tight text-slate-900">
-                {{ placeCard.title }}
-              </h3>
-              <p class="mt-3 flex-1 text-sm leading-relaxed text-slate-600">
-                {{ placeCard.body }}
-              </p>
-              <p
-                class="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
-              >
-                {{ placeCard.meta }}
-              </p>
-              <a
-                v-if="placeCard.external"
-                :href="placeCard.actionHref"
-                target="_blank"
-                rel="noreferrer"
-                class="mt-5 inline-flex items-center gap-2 self-start rounded-full bg-[#CE1126] px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:bg-[#b00e20]"
-              >
-                {{ placeCard.actionLabel }}
-                <span aria-hidden="true">→</span>
-              </a>
-              <NuxtLink
-                v-else
-                :to="placeCard.actionHref"
-                class="mt-5 inline-flex items-center gap-2 self-start rounded-full bg-[#CE1126] px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:bg-[#b00e20]"
-              >
-                {{ placeCard.actionLabel }}
-                <span aria-hidden="true">→</span>
-              </NuxtLink>
-            </div>
-          </article>
-        </div>
-      </section>
-      <section
-        v-if="categorySpotlightCards.length"
-        id="gastronomia-spotlights"
-        class="mb-8 rounded-3xl border border-[#9a3412]/15 bg-white p-6 shadow-sm"
-        aria-label="Focos por categoría de la vitrina gastronómica visible"
-      >
-        <div
-          class="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between"
-        >
-          <div>
-            <p
-              class="text-xs font-black uppercase tracking-[0.2em] text-[#9a3412]"
-            >
-              Explora por sabor
-            </p>
-            <h2 class="mt-2 text-2xl font-black text-slate-900">
-              Focos por categoría
-            </h2>
-          </div>
-          <p class="max-w-2xl text-sm text-slate-500">
-            El API resume las categorías dominantes del subset visible con un
-            lugar líder y CTA compartible para que web, mobile y asistente no
-            tengan que recalcular agrupaciones.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-4">
-          <article
-            v-for="spotlight in categorySpotlightCards"
-            :key="spotlight.id"
-            class="flex flex-col rounded-3xl border border-amber-200 bg-amber-50/70 p-5"
-          >
-            <div
-              v-if="spotlight.imageUrl"
-              class="mb-4 h-32 overflow-hidden rounded-2xl bg-amber-100"
-            >
-              <img
-                :src="spotlight.imageUrl"
-                :alt="
-                  spotlight.leadingPlaceImageAlt ||
-                  `Foto de ${spotlight.category}`
-                "
-                class="h-full w-full object-cover"
-                loading="lazy"
-              />
-            </div>
-            <p
-              class="text-xs font-black uppercase tracking-[0.2em] text-amber-700"
-            >
-              {{ spotlight.category }}
-            </p>
-            <h3 class="mt-3 text-2xl font-black text-slate-900 leading-tight">
-              {{ spotlight.title }}
-            </h3>
-            <p class="mt-3 flex-1 text-sm text-slate-600 leading-relaxed">
-              {{ spotlight.body }}
-            </p>
-            <p
-              class="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
-            >
-              {{ spotlight.meta }}
-            </p>
-            <NuxtLink
-              :to="spotlight.actionHref"
-              class="mt-5 inline-flex items-center gap-2 self-start rounded-full bg-[#9a3412] px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:bg-[#7c2d12]"
-            >
-              {{ spotlight.actionLabel }}
-              <span aria-hidden="true">→</span>
-            </NuxtLink>
-          </article>
-        </div>
-      </section>
-
-      <section
-        v-if="routeCards.length"
-        id="gastronomia-routes"
-        class="mb-8 rounded-3xl border border-[#9a3412]/15 bg-white p-6 shadow-sm"
-        aria-label="Rutas gastronómicas sugeridas para el subset visible"
-      >
-        <div
-          class="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between"
-        >
-          <div>
-            <p
-              class="text-xs font-black uppercase tracking-[0.2em] text-[#9a3412]"
-            >
-              Planes listos
-            </p>
-            <h2 class="mt-2 text-2xl font-black text-slate-900">
-              Rutas sugeridas por mood
-            </h2>
-          </div>
-          <p class="max-w-2xl text-sm text-slate-500">
-            El API agrupa el subset visible en planes accionables para que web,
-            mobile o asistente puedan recomendar sin recalcular categorías.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <article
-            v-for="routeCard in routeCards"
-            :key="routeCard.id"
-            class="flex flex-col rounded-3xl border border-amber-200 bg-amber-50/70 p-5"
-          >
-            <p
-              class="text-xs font-black uppercase tracking-[0.2em] text-amber-700"
-            >
-              Ruta sugerida
-            </p>
-            <h3 class="mt-3 text-2xl font-black text-slate-900 leading-tight">
-              {{ routeCard.title }}
-            </h3>
-            <p class="mt-3 flex-1 text-sm text-slate-600 leading-relaxed">
-              {{ routeCard.body }}
-            </p>
-            <p
-              class="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
-            >
-              {{ routeCard.meta }}
-            </p>
-            <NuxtLink
-              :to="routeCard.actionHref"
-              class="mt-5 inline-flex items-center gap-2 self-start rounded-full bg-[#9a3412] px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:bg-[#7c2d12]"
-            >
-              {{ routeCard.actionLabel }}
-              <span aria-hidden="true">→</span>
-            </NuxtLink>
-          </article>
-        </div>
-      </section>
-
-      <section
-        v-if="alertCards.length"
-        class="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3"
-        aria-label="Alertas editoriales de la vitrina gastronómica visible"
-      >
-        <article
-          v-for="alert in alertCards"
-          :key="alert.id"
-          class="rounded-3xl border p-5 shadow-sm"
-          :class="
-            alert.severity === 'warning'
-              ? 'border-[#9a3412]/20 bg-[#9a3412]/5'
-              : 'border-amber-200 bg-amber-50/80'
-          "
-        >
-          <p
-            class="text-xs font-black uppercase tracking-[0.2em]"
-            :class="
-              alert.severity === 'warning' ? 'text-[#9a3412]' : 'text-amber-700'
-            "
-          >
-            {{ alert.eyebrow }}
-          </p>
-          <h3 class="mt-3 text-2xl font-black text-slate-900 leading-tight">
-            {{ alert.title }}
-          </h3>
-          <p class="mt-3 text-sm text-slate-600 leading-relaxed">
-            {{ alert.body }}
-          </p>
-          <p
-            class="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
-          >
-            {{ alert.meta }}
-          </p>
-        </article>
-      </section>
 
       <div
         v-if="pending && !displayFeed?.data?.length"
-        class="flex flex-col items-center justify-center py-20"
+        class="surface catalog-state"
+        role="status"
       >
-        <div
-          class="h-12 w-12 animate-spin rounded-full border-b-2 border-[#9a3412]"
-        ></div>
-        <p class="mt-4 font-medium text-slate-500">
-          Sirviendo la mesa criolla...
-        </p>
+        <LoaderCircle :size="28" class="animate-spin" aria-hidden="true" />
+        <h3>Buscando los lugares…</h3>
+        <p>Un momento mientras consultamos la información.</p>
       </div>
-
       <div
         v-else-if="error && !displayFeed?.data?.length"
-        class="rounded-3xl border border-red-100 bg-red-50 p-8 text-center"
+        class="surface catalog-state"
       >
-        <span class="mb-4 block text-4xl">⚠️</span>
-        <h2 class="mb-2 text-xl font-bold text-red-800">
-          No pudimos cargar la vitrina gastronómica
-        </h2>
-        <p class="mb-6 text-red-600">
-          Hubo un error al conectar con el API Criollos.
+        <CircleAlert :size="28" aria-hidden="true" />
+        <h3>No pudimos cargar los lugares</h3>
+        <p>
+          La información no está disponible ahora. Vuelve a intentar en unos
+          minutos.
         </p>
         <button
+          type="button"
+          class="btn-primary"
           :disabled="refreshing || pending"
           @click="retryFeed"
-          class="rounded-full bg-red-600 px-6 py-2 font-bold text-white transition-colors hover:bg-red-700"
         >
           Reintentar
         </button>
       </div>
 
-      <div
-        v-else
-        id="gastronomia-results"
-        class="grid grid-cols-1 gap-8 md:grid-cols-2"
-        aria-live="polite"
-      >
+      <div v-else id="gastronomia-results" class="catalog-grid">
         <article
-          v-for="item in displayFeed?.data"
+          v-for="item in visibleItems"
           :key="item.id"
-          class="group flex flex-col overflow-hidden rounded-3xl border border-amber-100 bg-white shadow-sm transition-all hover:shadow-xl"
+          :id="`place-${item.id}`"
+          class="surface catalog-card"
         >
-          <div v-if="item.imageUrl" class="relative h-64 overflow-hidden">
+          <div class="catalog-media">
             <img
-              :src="item.imageUrl"
+              v-if="safeSourceUrl(item.imageUrl) && !failedImages.has(item.id)"
+              :src="safeSourceUrl(item.imageUrl)"
               :alt="item.imageAlt || item.title"
-              class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+              decoding="async"
+              @error="imageFailed(item.id)"
             />
-            <div
-              class="absolute left-4 top-4 rounded-full bg-[#9a3412] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-lg"
-            >
-              {{ item.category }}
-            </div>
+            <UtensilsCrossed
+              v-else
+              :size="32"
+              :stroke-width="1.4"
+              aria-hidden="true"
+            />
           </div>
-
-          <div class="flex flex-1 flex-col p-8">
-            <div class="mb-4 flex items-start justify-between gap-3">
+          <div class="catalog-body">
+            <div class="catalog-tags">
               <span
-                class="text-xs font-bold uppercase tracking-widest text-[#9a3412]"
-                >{{ item.category }}</span
+                v-for="category in (item.categories?.length
+                  ? item.categories
+                  : [item.category]
+                ).slice(0, 2)"
+                :key="category"
+                class="catalog-tag catalog-tag-food"
+                >{{ category }}</span
               >
-              <span class="text-xs font-medium text-slate-400">{{
-                item.categories?.slice(0, 2).join(' · ')
-              }}</span>
             </div>
-
-            <h3
-              class="mb-2 text-2xl font-black leading-tight text-slate-800 transition-colors group-hover:text-[#9a3412]"
+            <h3 class="brand-display">{{ item.title }}</h3>
+            <p
+              v-if="item.summary || item.description"
+              class="catalog-description"
             >
-              {{ item.title }}
-            </h3>
-
-            <p class="mb-4 text-sm font-bold text-slate-500">
-              {{ item.summary }}
+              {{ item.summary || item.description }}
             </p>
-
-            <p class="mb-8 line-clamp-4 leading-relaxed text-slate-600">
-              {{ item.description }}
-            </p>
-
-            <div class="mt-auto flex flex-wrap gap-3">
-              <a
-                v-if="item.sourceUrl"
-                :href="item.sourceUrl"
-                target="_blank"
-                rel="noreferrer"
-                class="inline-flex items-center gap-2 text-sm font-black uppercase tracking-widest text-[#CE1126] transition-all hover:gap-3"
-              >
-                Ver detalles
-                <span>→</span>
-              </a>
-            </div>
+          </div>
+          <div class="catalog-actions">
+            <a
+              v-if="safeSourceUrl(item.sourceUrl)"
+              :href="safeSourceUrl(item.sourceUrl)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="catalog-source"
+              :aria-label="`Ver detalles de ${item.title} en ${sourceName(item.sourceUrl)} (abre otra pestaña)`"
+            >
+              <span
+                >Ver detalles<small>{{
+                  sourceName(item.sourceUrl)
+                }}</small></span
+              ><ArrowUpRight :size="17" aria-hidden="true" />
+            </a>
+            <span v-else class="catalog-source-missing"
+              >Sin enlace de la fuente</span
+            >
           </div>
         </article>
+      </div>
+
+      <div v-if="hasMoreResults" class="catalog-pagination">
+        <p aria-live="polite">
+          Mostrando {{ visibleItems.length }} de
+          {{ displayFeed?.count ?? displayFeed?.data?.length }}.
+        </p>
+        <button
+          type="button"
+          class="btn-secondary"
+          :disabled="pending"
+          @click="showMoreResults"
+        >
+          Ver más lugares
+        </button>
       </div>
 
       <div
@@ -589,95 +226,144 @@
           !pending &&
           !error &&
           displayFeed?.metadata?.state !== 'unavailable' &&
-          (!displayFeed?.data || displayFeed?.data.length === 0)
+          !displayFeed?.data?.length
         "
         id="gastronomia-empty-state"
-        class="rounded-3xl border border-dashed border-amber-200 bg-white py-20 text-center"
+        class="surface catalog-state"
         role="status"
         aria-live="polite"
       >
-        <span class="mb-4 block text-5xl">🍽️</span>
-        <p class="text-lg text-slate-600">
-          No encontramos lugares para ese filtro.
+        <Search :size="28" aria-hidden="true" />
+        <h3>
+          {{
+            hasActiveFilters
+              ? 'No hay lugares con estos filtros'
+              : 'No hay lugares publicados por ahora'
+          }}
+        </h3>
+        <p>
+          {{
+            hasActiveFilters
+              ? 'Prueba otra búsqueda o quita los filtros para ver más opciones.'
+              : 'Vuelve más tarde o actualiza para consultar la fuente otra vez.'
+          }}
         </p>
-        <p class="mt-2 text-sm text-slate-500">
-          Prueba otra categoría o limpia la búsqueda para volver a la vitrina
-          completa.
-        </p>
-        <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <div class="catalog-state-actions">
           <button
+            v-if="hasActiveFilters"
             type="button"
-            class="inline-flex items-center justify-center rounded-2xl bg-[#9a3412] px-5 py-3 text-sm font-black uppercase tracking-widest text-white transition hover:bg-[#7c2d12]"
+            class="btn-primary"
             @click="clearFilters"
           >
             Limpiar filtros
           </button>
-          <a
-            href="#gastronomia-filters"
-            class="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+          <button
+            v-else
+            type="button"
+            class="btn-primary"
+            :disabled="refreshing || pending"
+            @click="retryFeed"
           >
-            Volver a filtros
-          </a>
+            Actualizar
+          </button>
+          <a href="#gastronomia-filters" class="btn-secondary"
+            >Volver a filtros</a
+          >
         </div>
       </div>
-    </main>
-
-    <footer class="bg-slate-900 px-6 py-10 text-center text-slate-400">
-      <div class="mx-auto max-w-5xl">
-        <p class="text-sm font-medium">
-          © 2026 Criollos · La ruta gastronómica de Caguas 🍍
-        </p>
+    </section>
+    <details
+      v-if="routeCards.length && displayFeed?.data?.length"
+      id="gastronomia-routes"
+      class="surface catalog-ideas"
+    >
+      <summary>
+        <Sparkles :size="18" aria-hidden="true" /> Ideas para combinar paradas
+      </summary>
+      <div class="catalog-idea-grid">
+        <article v-for="routeCard in routeCards" :key="routeCard.id">
+          <h3>{{ routeCard.title }}</h3>
+          <p>
+            {{ routeCard.placeTitles?.join(' · ') || routeCard.description }}
+          </p>
+          <NuxtLink
+            v-if="safeRouteLink(routeCard.actionHref)"
+            :to="safeRouteLink(routeCard.actionHref)"
+            class="catalog-source"
+            >Ver estos lugares <ArrowRight :size="16" aria-hidden="true"
+          /></NuxtLink>
+        </article>
       </div>
-    </footer>
-  </div>
+    </details>
+  </main>
 </template>
 
 <script setup>
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  CircleAlert,
+  LoaderCircle,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  UtensilsCrossed,
+  X,
+} from 'lucide-vue-next'
 import {
   getActiveGastronomyFilters,
   getGastronomyCategoryOptions,
   normalizeGastronomyQueryList,
 } from '../../utils/gastronomyFilters'
-import {
-  getGastronomyAlertCards,
-  getGastronomyCategorySpotlightCards,
-  getGastronomyFeaturedPlaceCards,
-  getGastronomySuggestedRouteCards,
-  getGastronomySummaryCards,
-} from '../../utils/gastronomySummary'
 
-const route = useRoute()
-const router = useRouter()
-
-const normalizeQueryValue = (value) => {
-  if (Array.isArray(value)) {
-    return value[0] || ''
+const safeSourceUrl = (value) => {
+  if (typeof value !== 'string' || !value.trim()) return null
+  try {
+    const url = new URL(value)
+    return ['https:', 'http:'].includes(url.protocol) &&
+      !url.username &&
+      !url.password
+      ? url.href
+      : null
+  } catch {
+    return null
   }
-
+}
+const sourceName = (value) => {
+  const href = safeSourceUrl(value)
+  return href ? new URL(href).hostname.replace(/^www\./, '') : ''
+}
+const failedImages = ref(new Set())
+const imageFailed = (id) => {
+  failedImages.value = new Set([...failedImages.value, id])
+}
+const normalizeQueryValue = (value) => {
+  if (Array.isArray(value)) return value[0] || ''
   return typeof value === 'string' ? value : ''
 }
+const route = useRoute()
+const router = useRouter()
+const pagePath = route.path
+const appliedQuery = computed(() =>
+  router.currentRoute.value.path === pagePath
+    ? router.currentRoute.value.query
+    : route.query
+)
 
 const selectedCategories = ref(
-  normalizeGastronomyQueryList(route.query.category)
+  normalizeGastronomyQueryList(appliedQuery.value.category)
 )
-const searchDraft = ref(normalizeQueryValue(route.query.q))
-
-const queryParams = computed(() => {
-  const params = {}
-
-  if (selectedCategories.value.length)
-    params.category = selectedCategories.value.join(',')
-
-  const trimmedQuery = searchDraft.value.trim()
-  if (trimmedQuery) params.q = trimmedQuery
-
-  return params
-})
-
+const searchDraft = ref(normalizeQueryValue(appliedQuery.value.q))
+const queryParams = computed(() => ({
+  category:
+    normalizeGastronomyQueryList(appliedQuery.value.category).join(',') ||
+    undefined,
+  q: normalizeQueryValue(appliedQuery.value.q).trim() || undefined,
+}))
 const { data: fullFeed, refresh: refreshFullFeed } = await useFetch(
   '/api/v1/gastronomia'
 )
-
 const {
   data: feed,
   pending,
@@ -694,6 +380,29 @@ watch(feed, (value) => {
   if (value?.data) lastSuccessfulFeed.value = value
 })
 const displayFeed = computed(() => feed.value || lastSuccessfulFeed.value)
+const lastSuccessfulFullFeed = shallowRef(fullFeed.value)
+watch(fullFeed, (value) => {
+  if (value?.data && value.metadata?.state !== 'unavailable')
+    lastSuccessfulFullFeed.value = value
+})
+const displayFullFeed = computed(() =>
+  fullFeed.value && fullFeed.value.metadata?.state !== 'unavailable'
+    ? fullFeed.value
+    : lastSuccessfulFullFeed.value
+)
+const visibleLimit = ref(24)
+const visibleItems = computed(() =>
+  (displayFeed.value?.data || []).slice(0, visibleLimit.value)
+)
+const hasMoreResults = computed(
+  () => (displayFeed.value?.data?.length || 0) > visibleLimit.value
+)
+watch(queryParams, () => {
+  visibleLimit.value = 24
+})
+const showMoreResults = () => {
+  visibleLimit.value += 24
+}
 const retryFeed = async () => {
   if (refreshing.value || pending.value) return
   refreshing.value = true
@@ -706,130 +415,526 @@ const retryFeed = async () => {
 
 const categoryOptions = computed(() =>
   getGastronomyCategoryOptions(
-    fullFeed.value?.summary?.categoryBreakdown || [],
-    fullFeed.value?.summary?.categories || []
+    displayFullFeed.value?.summary?.categoryBreakdown || [],
+    displayFullFeed.value?.summary?.categories || []
   )
 )
-
 const hasActiveFilters = computed(() =>
-  Boolean(selectedCategories.value.length || searchDraft.value.trim())
+  Object.values(queryParams.value).some(Boolean)
 )
-
 const activeFilters = computed(() =>
   getActiveGastronomyFilters({
-    selectedCategories: selectedCategories.value,
-    searchQuery: searchDraft.value,
+    selectedCategories: normalizeGastronomyQueryList(
+      appliedQuery.value.category
+    ),
+    searchQuery: queryParams.value.q,
   })
 )
-
 const resultSummary = computed(() => {
-  if (pending.value) {
-    return 'Actualizando vitrina…'
-  }
-
-  if (error.value) return 'Resultados sin confirmar; vuelve a intentar.'
-  if (displayFeed.value?.metadata?.state === 'unavailable')
-    return 'Fuente no disponible'
-
   const count = displayFeed.value?.count ?? 0
-  const categoriesCount = categoryOptions.value.length
-  const selectedCount = selectedCategories.value.length
-  const categoryLabel =
-    categoriesCount === 1
-      ? '1 categoría disponible'
-      : `${categoriesCount} categorías disponibles`
-  const countLabel =
-    count === 1 ? '1 lugar visible' : `${count} lugares visibles`
-  const selectedLabel = selectedCount
-    ? ` · ${selectedCount} categorías activas`
-    : ''
-  return `${countLabel} · ${categoryLabel}${selectedLabel}`
+  if (error.value)
+    return count
+      ? `${count} lugares anteriores · actualización pendiente`
+      : 'Lugares sin confirmar'
+  if (displayFeed.value?.metadata?.state === 'unavailable')
+    return 'Lugares sin confirmar'
+  if (pending.value) return 'Actualizando lugares…'
+  return count === 1 ? '1 lugar' : `${count} lugares`
 })
-
-const summaryCards = computed(() =>
-  getGastronomySummaryCards(
-    displayFeed.value?.summary,
-    displayFeed.value?.count ?? 0
-  )
+const routeCards = computed(
+  () => displayFeed.value?.summary?.suggestedRoutes?.filter(Boolean) || []
 )
-const featuredPlaceCards = computed(() =>
-  getGastronomyFeaturedPlaceCards(displayFeed.value?.summary)
-)
-const categorySpotlightCards = computed(() =>
-  getGastronomyCategorySpotlightCards(displayFeed.value?.summary)
-)
-const routeCards = computed(() =>
-  getGastronomySuggestedRouteCards(displayFeed.value?.summary)
-)
-const alertCards = computed(() =>
-  getGastronomyAlertCards(displayFeed.value?.summary)
-)
-
+const safeRouteLink = (value) =>
+  typeof value === 'string' && /^\/gastronomia(?:\?|$)/.test(value)
+    ? value
+    : null
 watch(
-  () => route.query,
-  (query) => {
-    selectedCategories.value = normalizeGastronomyQueryList(query.category)
-    searchDraft.value = normalizeQueryValue(query.q)
-  }
+  () => appliedQuery.value.category,
+  (value) => {
+    selectedCategories.value = normalizeGastronomyQueryList(value)
+  },
+  { flush: 'sync' }
 )
-
-const pushQueryState = async () => {
-  const nextQuery = {
-    ...route.query,
-    category: selectedCategories.value.length
-      ? selectedCategories.value.join(',')
-      : undefined,
-    q: searchDraft.value.trim() || undefined,
+watch(
+  () => appliedQuery.value.q,
+  (value) => {
+    searchDraft.value = normalizeQueryValue(value)
+  },
+  { flush: 'sync' }
+)
+let pendingQuery = null
+const getQueryState = () => pendingQuery || appliedQuery.value
+const pushQueryState = async (patch) => {
+  const nextQuery = { ...getQueryState(), ...patch }
+  pendingQuery = nextQuery
+  try {
+    await router.push({ path: pagePath, query: nextQuery })
+  } finally {
+    if (pendingQuery === nextQuery) pendingQuery = null
   }
-
-  await router.replace({ query: nextQuery })
 }
-
-const applySearch = async () => {
-  await pushQueryState()
-}
-
-const clearFilters = async () => {
+const applySearch = () =>
+  pushQueryState({ q: searchDraft.value.trim() || undefined })
+const clearFilters = () => {
   selectedCategories.value = []
   searchDraft.value = ''
-  await router.replace({ query: {} })
+  return pushQueryState({ category: undefined, q: undefined })
 }
-
 const isCategorySelected = (category) =>
   selectedCategories.value.includes(category)
-
-const toggleCategory = async (category) => {
-  selectedCategories.value = isCategorySelected(category)
-    ? selectedCategories.value.filter((entry) => entry !== category)
-    : [...selectedCategories.value, category].sort((left, right) =>
+const toggleCategory = (category) => {
+  const currentCategories = normalizeGastronomyQueryList(
+    getQueryState().category
+  )
+  const categories = currentCategories.includes(category)
+    ? currentCategories.filter((entry) => entry !== category)
+    : [...currentCategories, category].sort((left, right) =>
         left.localeCompare(right, 'es')
       )
-
-  await pushQueryState()
+  selectedCategories.value = categories
+  return pushQueryState({ category: categories.join(',') || undefined })
 }
-
-const removeFilter = async (key) => {
+const removeFilter = (key) => {
+  if (key === 'q') return pushQueryState({ q: undefined })
   if (key.startsWith('category:')) {
-    const category = key.slice('category:'.length)
-    selectedCategories.value = selectedCategories.value.filter(
-      (entry) => entry !== category
-    )
+    const categories = normalizeGastronomyQueryList(
+      getQueryState().category
+    ).filter((entry) => entry !== key.slice('category:'.length))
+    return pushQueryState({ category: categories.join(',') || undefined })
   }
-
-  if (key === 'q') {
-    searchDraft.value = ''
-  }
-
-  await pushQueryState()
 }
-
 useHead({
-  title: 'Gastronomía Caguas | Criollos',
+  title: 'Dónde comer en Caguas | Criollos',
   meta: [
     {
       name: 'description',
-      content: 'Vitrina pública para descubrir dónde comer en Caguas.',
+      content:
+        'Descubre restaurantes, cafés y lugares para comer en Caguas. Busca por nombre o combina tus tipos de comida favoritos.',
     },
   ],
 })
 </script>
+
+<style scoped>
+.catalog-page {
+  padding-block: 2.5rem 3rem;
+}
+.catalog-heading {
+  margin-bottom: 1.5rem;
+}
+.catalog-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-blue);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.catalog-heading h1 {
+  margin-top: 0.45rem;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+.catalog-heading > p:last-child {
+  margin-top: 0.7rem;
+  max-width: 44rem;
+  color: var(--color-muted);
+}
+.catalog-tools {
+  margin-bottom: 1.5rem;
+  padding: 1.2rem;
+}
+.catalog-search {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+}
+.catalog-search > .catalog-field {
+  flex: 1;
+  min-width: 0;
+}
+.catalog-field label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.catalog-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.8rem;
+}
+.catalog-tools details {
+  margin-top: 0.7rem;
+}
+.catalog-tools summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  width: fit-content;
+  cursor: pointer;
+  color: var(--color-navy);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.catalog-tools summary::after {
+  content: '+';
+  margin-left: 0.35rem;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+.catalog-tools details[open] summary::after {
+  content: '−';
+}
+.catalog-help {
+  margin-top: 0.65rem;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.catalog-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.catalog-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  color: var(--color-navy);
+  background: var(--color-surface);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.catalog-chip[aria-pressed='true'] {
+  border-color: var(--color-navy);
+  background: var(--color-navy);
+  color: white;
+}
+.catalog-chip:hover {
+  border-color: var(--color-blue);
+}
+.catalog-active .catalog-chip {
+  background: var(--color-blue-soft);
+}
+.catalog-chip-count {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.catalog-results-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin: 1.5rem 0 1rem;
+}
+.catalog-results-head h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+.catalog-results-head p {
+  margin-top: 0.2rem;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.catalog-results-head .btn-secondary {
+  font-size: 0.85rem;
+}
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+.catalog-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  scroll-margin-top: 7rem;
+  box-shadow: none;
+}
+.catalog-media {
+  display: grid;
+  place-items: center;
+  height: 210px;
+  overflow: hidden;
+  background: var(--color-cream-deep);
+  color: var(--color-navy);
+}
+.catalog-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.catalog-body {
+  padding: 1.15rem 1.15rem 0.5rem;
+}
+.catalog-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+.catalog-tag {
+  border-radius: 0.3rem;
+  padding: 0.2rem 0.45rem;
+  background: var(--color-blue-soft);
+}
+.catalog-tag-food {
+  background: var(--color-ochre-soft);
+  color: var(--color-warning);
+}
+.catalog-body h3 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.catalog-meta {
+  display: flex;
+  align-items: start;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  color: var(--color-ink-soft);
+  font-size: 0.85rem;
+}
+.catalog-meta svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.catalog-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  margin-top: 0.7rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+.catalog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: auto;
+  padding: 0.8rem 1.15rem 1rem;
+}
+.catalog-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  color: var(--color-navy);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.catalog-source:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.catalog-source span {
+  display: flex;
+  flex-direction: column;
+}
+.catalog-source small {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.catalog-save {
+  font-size: 0.8rem;
+  padding: 0.55rem 0.8rem;
+}
+.catalog-source-missing {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+.catalog-state {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+.catalog-state > svg {
+  display: block;
+  margin: 0 auto 0.8rem;
+  color: var(--color-blue);
+}
+.catalog-state h3 {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+.catalog-state p {
+  max-width: 30rem;
+  margin: 0.6rem auto 1.1rem;
+  color: var(--color-muted);
+}
+.catalog-state-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.catalog-ideas {
+  margin-top: 2rem;
+  padding: 0.3rem 1.1rem;
+  box-shadow: none;
+}
+.catalog-ideas > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 56px;
+  cursor: pointer;
+  color: var(--color-navy);
+  font-weight: 700;
+}
+.catalog-ideas > summary::after {
+  content: '+';
+  margin-left: auto;
+  font-size: 1.3rem;
+  font-weight: 400;
+}
+.catalog-ideas[open] > summary::after {
+  content: '−';
+}
+.catalog-idea-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 0.5rem 0 1rem;
+}
+.catalog-idea-grid article {
+  padding: 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+}
+.catalog-idea-grid h3 {
+  font-weight: 800;
+  line-height: 1.35;
+}
+.catalog-idea-grid p {
+  margin-block: 0.6rem;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.catalog-type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.catalog-type-options .catalog-chip {
+  gap: 0.4rem;
+}
+@media (min-width: 1100px) {
+  .catalog-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 639px) {
+  .catalog-page {
+    padding-top: 1.5rem;
+  }
+  .catalog-heading {
+    margin-bottom: 1.1rem;
+  }
+  .catalog-heading > p:last-child {
+    font-size: 0.9rem;
+  }
+  .catalog-tools {
+    padding: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .catalog-search {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .catalog-search .btn-primary {
+    padding-inline: 1rem;
+  }
+  .catalog-search .btn-secondary {
+    flex-basis: 100%;
+  }
+  .catalog-filter-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .catalog-filter-grid > .catalog-field:first-child {
+    grid-column: 1 / -1;
+  }
+  .catalog-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+  .catalog-card {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    align-content: start;
+  }
+  .catalog-media {
+    height: 100%;
+    min-height: 145px;
+  }
+  .catalog-media img {
+    min-height: 145px;
+  }
+  .catalog-body {
+    padding: 0.85rem 0.85rem 0.3rem;
+  }
+  .catalog-body h3 {
+    font-size: 1.08rem;
+  }
+  .catalog-tags {
+    font-size: 0.68rem;
+    margin-bottom: 0.4rem;
+  }
+  .catalog-description {
+    -webkit-line-clamp: 2;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    margin-top: 0.5rem;
+  }
+  .catalog-meta {
+    font-size: 0.77rem;
+  }
+  .catalog-actions {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--color-line);
+    padding: 0.4rem 0.85rem;
+  }
+  .catalog-results-head {
+    margin-top: 1rem;
+  }
+  .catalog-idea-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.catalog-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.catalog-pagination p {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+</style>
