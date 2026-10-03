@@ -23,7 +23,11 @@ export function isPublicApiRoute(url: string): boolean {
     return false
   }
 
-  if (url.startsWith('/api/v1')) {
+  if (
+    url === '/api/v1' ||
+    url.startsWith('/api/v1/') ||
+    url.startsWith('/api/v1?')
+  ) {
     return true
   }
 

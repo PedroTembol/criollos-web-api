@@ -5,11 +5,15 @@ import { applyConditionalCache } from './httpCache'
 export type RoutesCatalogResponse = {
   routes: BootstrapResponse['routes']
   fetchedAt: string
+  stale?: boolean
+  staleReason?: string
 }
 
 export type StopsCatalogResponse = {
   stops: BootstrapResponse['stops']
   fetchedAt: string
+  stale?: boolean
+  staleReason?: string
 }
 
 export function buildRoutesCatalogResponse(
@@ -18,6 +22,7 @@ export function buildRoutesCatalogResponse(
   return {
     routes: data.routes,
     fetchedAt: data.fetchedAt,
+    ...(data.stale ? { stale: true, staleReason: data.staleReason } : {}),
   }
 }
 
@@ -27,6 +32,7 @@ export function buildStopsCatalogResponse(
   return {
     stops: data.stops,
     fetchedAt: data.fetchedAt,
+    ...(data.stale ? { stale: true, staleReason: data.staleReason } : {}),
   }
 }
 

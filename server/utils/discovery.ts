@@ -86,6 +86,7 @@ function formatDateDisplay(
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+    timeZone: 'UTC',
   })
 }
 

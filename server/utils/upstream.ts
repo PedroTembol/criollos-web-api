@@ -25,7 +25,7 @@ export async function fetchUpstreamJson<T>(
   const config = getAppConfig()
   const url = buildUrl(endpoint, {
     ...params,
-    DEVICEID: config.deviceId
+    DEVICEID: config.deviceId,
   })
 
   const controller = new AbortController()
@@ -34,13 +34,13 @@ export async function fetchUpstreamJson<T>(
   try {
     const response = await fetch(url.toString(), {
       method: 'GET',
-      signal: controller.signal
+      signal: controller.signal,
     })
 
     if (!response.ok) {
       throw createError({
         statusCode: response.status,
-        statusMessage: `Upstream error for ${endpoint}`
+        statusMessage: `Upstream error for ${endpoint}`,
       })
     }
 
@@ -65,19 +65,19 @@ export async function postUpstreamJson<T>(
     const response = await fetch(url.toString(), {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         ...body,
-        DEVICEID: config.deviceId
+        DEVICEID: config.deviceId,
       }),
-      signal: controller.signal
+      signal: controller.signal,
     })
 
     if (!response.ok) {
       throw createError({
         statusCode: response.status,
-        statusMessage: `Upstream error for ${endpoint}`
+        statusMessage: `Upstream error for ${endpoint}`,
       })
     }
 

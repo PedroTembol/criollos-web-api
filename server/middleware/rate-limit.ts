@@ -3,84 +3,51 @@ import {
   createError,
   getRequestHeader,
   getRequestIP,
+  setResponseHeader,
 } from 'h3'
+import { sha256Hex } from '../utils/secureHash'
 import { getAppConfig } from '../utils/config'
 import { isPublicApiRoute } from '../utils/apiRoutes'
-import { devLog } from '../utils/logging'
 
-type RateEntry = {
-  count: number
-  resetAt: number
-}
-
+type RateEntry = { count: number; resetAt: number }
 function getRateMap(): Map<string, RateEntry> {
-  const globalKey = '__rateLimit'
-  const globalAny = globalThis as typeof globalThis & {
-    [key: string]: Map<string, RateEntry>
+  const runtime = globalThis as typeof globalThis & {
+    __rateLimit?: Map<string, RateEntry>
   }
-  if (!globalAny[globalKey]) {
-    globalAny[globalKey] = new Map()
-  }
-  return globalAny[globalKey]
+  return (runtime.__rateLimit ??= new Map())
 }
 
-export default defineEventHandler((event) => {
-  // Leer la URL después de que el rewrite haya sido aplicado
+export default defineEventHandler(async (event) => {
   const url = event.node.req.url || ''
-  const method = event.node.req.method || 'GET'
-
-  devLog(
-    `[rate-limit] ⏱️  Verificando rate limit: ${method} ${url} (después del rewrite)`
-  )
-
-  if (!isPublicApiRoute(url)) {
-    devLog(`[rate-limit] ⏭️  No es ruta de API, saltando`)
-    return
-  }
-
-  if (event.node.req.method === 'OPTIONS') {
-    devLog(`[rate-limit] ✅ OPTIONS request, saltando rate limit`)
-    return
-  }
-
+  if (!isPublicApiRoute(url) || event.node.req.method === 'OPTIONS') return
   const config = getAppConfig()
-  if (config.rateLimitRpm <= 0) {
-    devLog(`[rate-limit] ⚠️  Rate limit deshabilitado`)
-    return
-  }
+  if (config.rateLimitRpm <= 0) return
 
   const apiKey = getRequestHeader(event, 'x-api-key')
-  const ip = getRequestIP(event, { trustProxy: true }) || 'unknown'
-  const key = apiKey ? `key:${apiKey}` : `ip:${ip}`
+  const ip =
+    getRequestHeader(event, 'cf-connecting-ip') ||
+    getRequestIP(event, { trustProxy: true }) ||
+    'unknown'
+  const key = apiKey ? `key:${await sha256Hex(apiKey)}` : `ip:${ip}`
   const now = Date.now()
-  const windowMs = 60 * 1000
-
   const rateMap = getRateMap()
+  // Bound expired entries in the isolate; deployment still needs account-level protection.
+  if (rateMap.size >= 1000)
+    for (const [entryKey, value] of rateMap)
+      if (value.resetAt <= now) rateMap.delete(entryKey)
   const entry = rateMap.get(key)
-
   if (!entry || entry.resetAt <= now) {
-    rateMap.set(key, { count: 1, resetAt: now + windowMs })
-    devLog(
-      `[rate-limit] ✅ Rate limit OK - Nuevo entry para ${key.substring(0, 20)}...`
-    )
+    rateMap.set(key, { count: 1, resetAt: now + 60000 })
     return
   }
-
   if (entry.count >= config.rateLimitRpm) {
     const retryAfter = Math.ceil((entry.resetAt - now) / 1000)
-    devLog(
-      `[rate-limit] ❌ Rate limit excedido - ${entry.count}/${config.rateLimitRpm} para ${key.substring(0, 20)}...`
-    )
+    setResponseHeader(event, 'Retry-After', String(retryAfter))
     throw createError({
       statusCode: 429,
       statusMessage: 'Rate limit exceeded',
       data: { retryAfter },
     })
   }
-
-  entry.count += 1
-  rateMap.set(key, entry)
-  devLog(
-    `[rate-limit] ✅ Rate limit OK - ${entry.count}/${config.rateLimitRpm} para ${key.substring(0, 20)}...`
-  )
+  entry.count++
 })

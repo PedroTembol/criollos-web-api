@@ -281,8 +281,14 @@ function toStopSummary(
     routePointId: point.id,
     markerId: point.markerId,
     name: marker?.description ?? null,
-    lat: marker?.lat ?? point.lat ?? null,
-    lng: marker?.lng ?? point.lng ?? null,
+    lat:
+      marker?.lat ??
+      (Math.abs(point.lat) > 90 ? point.lat / 1000000 : point.lat) ??
+      null,
+    lng:
+      marker?.lng ??
+      (Math.abs(point.lng) > 180 ? point.lng / 1000000 : point.lng) ??
+      null,
     order: point.order,
     seconds: point.seconds,
   }

@@ -1,11 +1,17 @@
 import { defineEventHandler, getQuery, type H3Event } from 'h3'
 import { applyConditionalCache } from '../../utils/httpCache'
-import { getCachedEventos, getCachedGastronomia } from '../../utils/data'
+import { getEventosFeed, getGastronomiaFeed } from '../../utils/data'
 import {
   buildDiscoveryFeed,
   filterDiscoveryFeed,
   type DiscoveryFeedItem,
 } from '../../utils/discovery'
+
+import {
+  getFeedMetadata,
+  combineFeedMetadata,
+  feedCacheMaxAge,
+} from '../../utils/feedMetadata'
 
 const CACHE_TTL_SECONDS = 15 * 60
 const ALLOWED_TYPES: DiscoveryFeedItem['type'][] = ['evento', 'gastronomia']
@@ -71,21 +77,26 @@ function parseFilters(event: H3Event): {
 export default defineEventHandler(async (event) => {
   const filters = parseFilters(event)
   const [eventos, places] = await Promise.all([
-    getCachedEventos(),
-    getCachedGastronomia(),
+    getEventosFeed(),
+    getGastronomiaFeed(),
   ])
 
-  const feed = buildDiscoveryFeed(eventos, places)
+  const metadata = combineFeedMetadata({
+    eventos: getFeedMetadata(eventos),
+    gastronomia: getFeedMetadata(places),
+  })
+  const feed = buildDiscoveryFeed(eventos.data, places.data)
   const payload = {
     status: 'success',
     ...filterDiscoveryFeed(feed, filters),
+    metadata,
   }
 
   if (
     applyConditionalCache(event, {
-      maxAgeSeconds: CACHE_TTL_SECONDS,
+      maxAgeSeconds: feedCacheMaxAge(metadata, CACHE_TTL_SECONDS),
       payload,
-      lastModified: feed.generatedAt,
+      lastModified: metadata.fetchedAt,
     })
   ) {
     return null

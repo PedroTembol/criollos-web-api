@@ -162,6 +162,23 @@
               <span>Usa flechas para navegar</span>
             </div>
           </div>
+          <p v-if="searchError" role="alert" class="mt-3 text-white">
+            {{ searchError }}
+            <button @click="handleSearch" class="underline font-bold">
+              Reintentar búsqueda
+            </button>
+          </p>
+          <p
+            v-else-if="
+              searchQuery.trim().length >= 2 &&
+              !searchLoading &&
+              !searchResults.length
+            "
+            role="status"
+            class="mt-3 text-white"
+          >
+            No encontramos resultados.
+          </p>
         </div>
       </div>
     </header>
@@ -181,7 +198,7 @@
               <div class="flex items-center gap-3 mb-2 text-[#0038A8]">
                 <span class="text-2xl" aria-hidden="true">🚍</span>
                 <span class="font-bold uppercase text-sm tracking-widest"
-                  >Trolleys Activos</span
+                  >Unidades reportadas</span
                 >
               </div>
               <div
@@ -191,7 +208,13 @@
                 {{ vehicleCount !== null ? vehicleCount : '...' }}
               </div>
               <p class="text-slate-500 text-sm mt-1 italic">
-                Actualizado en tiempo real
+                {{
+                  trackingStale
+                    ? 'Lectura anterior'
+                    : trackingLoading
+                      ? 'Consultando señales…'
+                      : 'Señales de transporte'
+                }}
               </p>
             </div>
 
@@ -386,7 +409,7 @@
                 id="trolley-board-heading"
                 class="text-3xl font-bold text-slate-900"
               >
-                Movimiento en vivo por Caguas
+                Señales de transporte por Caguas
               </h3>
               <p class="text-slate-600 mt-2 max-w-2xl">
                 Mira qué unidades están activas ahora mismo, su ruta y la
@@ -406,6 +429,31 @@
             </p>
           </div>
 
+          <div class="mb-6 flex flex-wrap items-center gap-4">
+            <button
+              @click="refreshTracking"
+              :disabled="trackingLoading"
+              class="rounded-full bg-[#0038A8] px-5 py-2 font-bold text-white disabled:opacity-50"
+            >
+              {{ trackingLoading ? 'Actualizando…' : 'Actualizar señales' }}
+            </button>
+            <NuxtLink
+              to="/transporte"
+              class="font-bold text-[#0038A8] underline"
+              >Ver rutas y paradas</NuxtLink
+            >
+            <p v-if="trackingError" role="alert" class="text-amber-800">
+              {{ trackingError }}
+            </p>
+            <p v-else-if="trackingStale" role="status" class="text-amber-800">
+              La fuente no pudo actualizarse. Esta lectura es anterior.
+            </p>
+          </div>
+          <p class="mb-6 text-sm text-slate-600">
+            Horario municipal publicado: trolley lunes a viernes, 7:00 a.
+            m.–6:00 p. m., Puerto Rico. Una lectura sin unidades no confirma una
+            interrupción del servicio.
+          </p>
           <div v-if="topVehicles.length" class="space-y-8">
             <div
               v-if="upcomingStops.length"
@@ -834,14 +882,13 @@
             ¿Quieres probar el app antes que nadie?
           </h3>
           <p class="text-xl text-slate-600 mb-10">
-            Únete a nuestro programa de Beta Testing. Te enviaremos una
-            invitación de **Test Flight** para que instales la versión
-            experimental en tu iPhone o Android.
+            Registra tu interés para recibir novedades sobre las pruebas en
+            iPhone o Android cuando estén disponibles.
           </p>
 
           <form
             @submit.prevent="submitBeta"
-            class="flex flex-col md:flex-row gap-4 max-w-xl mx-auto"
+            class="flex flex-col gap-4 max-w-xl mx-auto"
             aria-label="Formulario de registro para beta"
           >
             <input
@@ -852,6 +899,15 @@
               class="flex-1 px-6 py-4 rounded-full border-2 border-slate-100 focus:border-[#0038A8] outline-none transition-all text-lg shadow-inner"
               aria-label="Email para invitación beta"
             />
+            <select
+              v-model="platform"
+              aria-label="Plataforma para la beta"
+              class="rounded-full border-2 border-slate-100 px-6 py-4"
+            >
+              <option value="both">iPhone y Android</option>
+              <option value="ios">iPhone</option>
+              <option value="android">Android</option>
+            </select>
             <button
               type="submit"
               :disabled="loading"
@@ -860,8 +916,16 @@
               {{ loading ? 'Enviando...' : 'Pedir Acceso' }}
             </button>
           </form>
+          <p class="mt-4 text-sm text-slate-500">
+            Guardaremos tu email, plataforma y fecha durante 90 días para
+            gestionar la beta. Solo los administradores de nuestra cuenta de
+            Cloudflare pueden acceder a estos datos.
+          </p>
+          <p v-if="betaError" role="alert" class="mt-4 text-amber-800">
+            {{ betaError }}
+          </p>
           <p v-if="success" class="mt-4 text-green-600 font-bold" role="status">
-            ¡Excelente! Te avisaremos pronto. 🍍
+            Tu interés se guardó correctamente. 🍍
           </p>
         </div>
       </section>
@@ -901,10 +965,18 @@ import {
   getTrackingAlertRoutes,
   getTrackingHealthCards,
 } from '../utils/trackingHealth'
+import { searchResultDestination } from '../utils/transportLinks'
 
 const email = ref('')
 const loading = ref(false)
 const success = ref(false)
+const betaError = ref('')
+const platform = ref('both')
+const trackingLoading = ref(false)
+const trackingError = ref('')
+const trackingStale = ref(false)
+let trackingTimer
+let trackingController
 const vehicleCount = ref(null)
 const topVehicles = ref([])
 const routeCards = ref([])
@@ -921,38 +993,36 @@ const searchResults = ref([])
 const searchLoading = ref(false)
 const activeIndex = ref(-1)
 let searchTimeout = null
+let searchController
+let searchVersion = 0
+const searchError = ref('')
 
 const handleSearch = () => {
   activeIndex.value = -1
   if (searchTimeout) clearTimeout(searchTimeout)
-
+  searchController?.abort()
+  const version = ++searchVersion
   const q = searchQuery.value.trim()
+  searchError.value = ''
+  searchResults.value = []
   if (q.length < 2) {
-    searchResults.value = []
+    searchLoading.value = false
     return
   }
-
   searchLoading.value = true
   searchTimeout = setTimeout(async () => {
+    searchController = new AbortController()
     try {
-      const config = useRuntimeConfig()
-      const apiKey =
-        config.public.apiKey ||
-        '118884a9d701e5b0ab4f44322568a3c548fb3efb9f22b1b64f8c446224224c2b'
-
       const data = await $fetch('/api/v1/search', {
         query: { q },
-        headers: {
-          'x-api-key': apiKey,
-        },
+        signal: searchController.signal,
       })
-
-      searchResults.value = data?.results || []
-    } catch (e) {
-      console.error('Search error:', e)
-      searchResults.value = []
+      if (version === searchVersion) searchResults.value = data?.results || []
+    } catch (error) {
+      if (version === searchVersion && !searchController.signal.aborted)
+        searchError.value = 'No pudimos buscar. Intenta de nuevo.'
     } finally {
-      searchLoading.value = false
+      if (version === searchVersion) searchLoading.value = false
     }
   }, 300)
 }
@@ -977,17 +1047,8 @@ const resultTypeLabel = (type) => {
   return map[type] || 'Info'
 }
 
-const navigateResult = (result) => {
-  if (result.type === 'evento') {
-    return navigateTo('/eventos')
-  }
-  if (result.type === 'gastronomia') {
-    return navigateTo('/gastronomia')
-  }
-  if (result.type === 'route' || result.type === 'stop') {
-    return navigateTo('/discovery') // Fallback for now
-  }
-}
+const navigateResult = (result) =>
+  navigateTo(searchResultDestination(result, result.title))
 
 const moveActiveIndex = (delta) => {
   if (!searchResults.value.length) return
@@ -1003,6 +1064,11 @@ const selectActiveResult = () => {
 }
 
 const closeSearch = () => {
+  searchVersion++
+  clearTimeout(searchTimeout)
+  searchController?.abort()
+  searchLoading.value = false
+  searchError.value = ''
   searchResults.value = []
   searchQuery.value = ''
   activeIndex.value = -1
@@ -1062,6 +1128,7 @@ const formatDateTime = (value) => {
     return new Intl.DateTimeFormat('es-PR', {
       dateStyle: 'medium',
       timeStyle: 'short',
+      timeZone: 'America/Puerto_Rico',
     }).format(new Date(value))
   } catch {
     return value
@@ -1088,46 +1155,24 @@ const routeIdListCopy = (routeIds) => {
   return routeIds.map((routeId) => `Ruta ${routeId}`).join(' · ')
 }
 
-// Obtener status de trolleys en el montaje
-onMounted(async () => {
-  const host = window.location.hostname
-  const isLocalAuditHost = host === 'localhost' || host === '127.0.0.1'
-
-  if (isLocalAuditHost) {
-    vehicleCount.value = 0
-    topVehicles.value = []
-    routeCards.value = []
-    upcomingStops.value = []
-    trackingHealthCards.value = getTrackingHealthCards(null, 0)
-    trackingAlertRoutes.value = []
-    serviceHealthLabel.value = 'Sin lectura'
-    serviceHealthTone.value = 'neutral'
-    return
-  }
-
+const refreshTracking = async () => {
+  if (trackingLoading.value) return
+  trackingLoading.value = true
+  trackingController = new AbortController()
+  const timeout = setTimeout(() => trackingController.abort(), 10000)
   try {
-    const config = useRuntimeConfig()
-    const apiKey =
-      config.public.apiKey ||
-      '118884a9d701e5b0ab4f44322568a3c548fb3efb9f22b1b64f8c446224224c2b'
-
     const data = await $fetch('/api/v1/tracking', {
-      headers: {
-        'x-api-key': apiKey,
-      },
+      signal: trackingController.signal,
     })
-
     const vehicles = Array.isArray(data?.vehicles) ? data.vehicles : []
     vehicleCount.value = vehicles.length
     topVehicles.value = vehicles
       .slice()
-      .sort((a, b) => {
-        const aFreshness = a.freshnessSeconds ?? Number.MAX_SAFE_INTEGER
-        const bFreshness = b.freshnessSeconds ?? Number.MAX_SAFE_INTEGER
-        return aFreshness - bFreshness
-      })
+      .sort(
+        (a, b) =>
+          (a.freshnessSeconds ?? Infinity) - (b.freshnessSeconds ?? Infinity)
+      )
       .slice(0, 3)
-
     routeCards.value = Array.isArray(data?.summary?.routes)
       ? data.summary.routes.slice(0, 6)
       : []
@@ -1139,53 +1184,76 @@ onMounted(async () => {
       vehicles.length
     )
     trackingAlertRoutes.value = getTrackingAlertRoutes(data?.summary)
-
-    if (data?.summary?.serviceHealth?.status === 'healthy') {
-      serviceHealthLabel.value = 'Sistema saludable'
-      serviceHealthTone.value = 'healthy'
-    } else if (data?.summary?.serviceHealth?.status === 'degraded') {
-      serviceHealthLabel.value = 'Sistema degradado'
-      serviceHealthTone.value = 'warning'
-    } else if (data?.summary?.serviceHealth?.status === 'offline') {
-      serviceHealthLabel.value = 'Sistema sin servicio'
-      serviceHealthTone.value = 'critical'
-    } else {
-      serviceHealthLabel.value = 'Sin lectura'
-      serviceHealthTone.value = 'neutral'
-    }
-
-    if (data?.fetchedAt) {
-      lastUpdatedLabel.value = formatDateTime(data.fetchedAt)
-    }
-  } catch (e) {
-    console.error('Error fetching vehicle positions:', e)
-    vehicleCount.value = 0
-    topVehicles.value = []
-    routeCards.value = []
-    upcomingStops.value = []
-    trackingHealthCards.value = getTrackingHealthCards(null, 0)
-    trackingAlertRoutes.value = []
-    serviceHealthLabel.value = 'Sin lectura'
-    serviceHealthTone.value = 'neutral'
-    lastUpdatedLabel.value = ''
+    trackingStale.value = data?.stale === true
+    trackingError.value = ''
+    serviceHealthLabel.value = data?.stale
+      ? 'Lectura antigua'
+      : vehicles.length === 0
+        ? 'Sin señales reportadas'
+        : data?.summary?.serviceHealth?.status === 'healthy'
+          ? 'Señales recientes'
+          : 'Señales demoradas'
+    serviceHealthTone.value = data?.stale
+      ? 'warning'
+      : vehicles.length === 0
+        ? 'neutral'
+        : data?.summary?.serviceHealth?.status === 'healthy'
+          ? 'healthy'
+          : 'warning'
+    lastUpdatedLabel.value = data?.fetchedAt
+      ? formatDateTime(data.fetchedAt)
+      : ''
+  } catch {
+    trackingError.value =
+      'No pudimos actualizar. Reintenta; la lectura anterior se conserva si existe.'
+    trackingStale.value = vehicleCount.value !== null
+    serviceHealthLabel.value =
+      vehicleCount.value === null
+        ? 'Sin lectura disponible'
+        : 'Lectura sin actualizar'
+    serviceHealthTone.value = 'warning'
+  } finally {
+    clearTimeout(timeout)
+    trackingLoading.value = false
   }
+}
+const onVisibility = () => {
+  if (!document.hidden) refreshTracking()
+}
+onMounted(() => {
+  refreshTracking()
+  trackingTimer = setInterval(() => {
+    if (!document.hidden) refreshTracking()
+  }, 30000)
+  document.addEventListener('visibilitychange', onVisibility)
+})
+onBeforeUnmount(() => {
+  clearInterval(trackingTimer)
+  clearTimeout(searchTimeout)
+  trackingController?.abort()
+  searchController?.abort()
+  document.removeEventListener('visibilitychange', onVisibility)
 })
 
 const submitBeta = async () => {
+  if (loading.value) return
   loading.value = true
+  success.value = false
+  betaError.value = ''
   try {
-    // Simular envío a endpoint de feedback (o crear uno nuevo para beta)
-    await $fetch('/api/v1/beta', {
+    const result = await $fetch('/api/v1/beta', {
       method: 'POST',
-      body: {
-        email: email.value,
-        date: new Date().toISOString(),
-      },
+      body: { email: email.value, platform: platform.value },
     })
+    if (result?.persisted !== true)
+      throw new Error('Registration not confirmed')
     success.value = true
     email.value = ''
-  } catch (e) {
-    alert('Hubo un error al procesar tu solicitud. Por favor intenta de nuevo.')
+  } catch (error) {
+    betaError.value =
+      error?.statusCode === 429
+        ? 'Alcanzaste el límite de intentos. Espera diez minutos antes de reintentar.'
+        : 'El registro beta aún no está disponible. Tu correo no se confirmó como guardado; puedes reintentar más tarde.'
   } finally {
     loading.value = false
   }

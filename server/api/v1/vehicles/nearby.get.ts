@@ -8,7 +8,14 @@ export default defineEventHandler(async (event) => {
   const lng = Number(query.lng)
   const limit = query.limit ? Number(query.limit) : null
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+  if (
+    query.lat === undefined ||
+    query.lng === undefined ||
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    Math.abs(lat) > 90 ||
+    Math.abs(lng) > 180
+  ) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Faltan parámetros lat/lng válidos',
@@ -16,5 +23,12 @@ export default defineEventHandler(async (event) => {
   }
 
   const bootstrap = await getBootstrapData()
-  return buildNearbyVehicles(bootstrap, { lat, lng, limit })
+  return {
+    ...buildNearbyVehicles(bootstrap, { lat, lng, limit }),
+    fetchedAt: bootstrap.fetchedAt,
+    source: bootstrap.stale ? 'stale-cache' : 'upstream',
+    ...(bootstrap.stale
+      ? { stale: true, staleReason: bootstrap.staleReason }
+      : {}),
+  }
 })

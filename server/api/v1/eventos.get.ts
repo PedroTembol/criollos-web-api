@@ -1,8 +1,10 @@
 import { defineEventHandler, getQuery, type H3Event } from 'h3'
 import { applyConditionalCache } from '../../utils/httpCache'
 import { filterEventosFeed, type EventosFeedFilters } from '../../utils/eventos'
-import { getCachedEventos } from '../../utils/data'
+import { getEventosFeed } from '../../utils/data'
 import { type Evento } from '../../utils/scraper'
+
+import { getFeedMetadata, feedCacheMaxAge } from '../../utils/feedMetadata'
 
 const CACHE_TTL_SECONDS = 60 * 60
 
@@ -31,18 +33,20 @@ function parseFilters(event: H3Event): EventosFeedFilters {
 
 export default defineEventHandler(async (event) => {
   const filters = parseFilters(event)
-  const cachedEventos = await getCachedEventos()
+  const snapshot = await getEventosFeed()
+  const metadata = getFeedMetadata(snapshot)
 
   const payload = {
     status: 'success',
-    ...filterEventosFeed(cachedEventos, filters),
+    ...filterEventosFeed(snapshot.data, filters),
+    metadata,
   }
 
   if (
     applyConditionalCache(event, {
-      maxAgeSeconds: CACHE_TTL_SECONDS,
+      maxAgeSeconds: feedCacheMaxAge(metadata, CACHE_TTL_SECONDS),
       payload,
-      lastModified: cachedEventos[0]?.publishedAt,
+      lastModified: snapshot.fetchedAt,
     })
   ) {
     return null

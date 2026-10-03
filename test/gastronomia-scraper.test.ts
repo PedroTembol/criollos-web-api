@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 
-import { parseGastronomiaFromHtml } from '../server/utils/scraper'
+import {
+  parseGastronomiaFromHtml,
+  parseGastronomiaPageLinks,
+  scrapeGastronomiaFeed,
+} from '../server/utils/scraper'
 
 describe('parseGastronomiaFromHtml', () => {
   test('normalizes Visit Caguas gastronomia cards', () => {
@@ -60,5 +64,96 @@ describe('parseGastronomiaFromHtml', () => {
 
     expect(places).toHaveLength(1)
     expect(places[0].title).toBe('Cafe del Turabo')
+  })
+})
+
+const card = (title: string) => `
+  <article data-place-card>
+    <h2>${title}</h2><p data-event-category>Cafeterías</p>
+    <p data-event-description>Comida local.</p>
+    <a href="/gastronomia/${title}">Detalles</a>
+  </article>`
+
+describe('gastronomy directory pagination', () => {
+  test('follows only canonical same-source directory links', () => {
+    expect(
+      parseGastronomiaPageLinks(`
+      <a href="https://visitacaguas.net?page=34">34</a>
+      <a href="/?page=2">2</a><a href="/?page=2#top">2</a>
+      <a href="/?page=1">1</a><a href="/?page=-1">Bad</a>
+      <a href="/?page=2.5">Bad</a><a href="/?page=2&category=cafe">Filter</a>
+      <a href="https://example.com/?page=3">External</a>
+      <a href="/eventos?page=3">Events</a>
+    `)
+    ).toEqual([
+      'https://visitacaguas.net/?page=2',
+      'https://visitacaguas.net/?page=34',
+    ])
+  })
+
+  test('discovers linked pages recursively and dedupes their cards', async () => {
+    const requests: string[] = []
+    const fixtures: Record<string, string> = {
+      'https://visitacaguas.net/': card('Cafe Uno') + '<a href="?page=2">2</a>',
+      'https://visitacaguas.net/?page=2':
+        card('Cafe Uno') + card('Cafe Dos') + '<a href="?page=3">3</a>',
+      'https://visitacaguas.net/?page=3':
+        card('Cafe Tres') + '<a href="?page=2">2</a>',
+    }
+    const result = await scrapeGastronomiaFeed(async (url, timeoutMs) => {
+      requests.push(url)
+      expect(timeoutMs).toBeGreaterThan(0)
+      expect(timeoutMs).toBeLessThanOrEqual(5000)
+      return fixtures[url]!
+    })
+    expect(requests).toHaveLength(3)
+    expect(result.data.map((place) => place.id)).toEqual([
+      'cafe-uno',
+      'cafe-dos',
+      'cafe-tres',
+    ])
+    expect(result.complete).toBe(true)
+    expect(result.pagesFetched).toBe(3)
+    expect(result.pagesDiscovered).toBe(3)
+    expect(result.fetchedAt).not.toBeNull()
+  })
+
+  test('reports partial data when one linked page fails instead of claiming a complete catalog', async () => {
+    const result = await scrapeGastronomiaFeed(async (url) => {
+      if (url.endsWith('page=2'))
+        throw new Error('Provider error with private context')
+      return card('Cafe Uno') + '<a href="?page=2">2</a>'
+    })
+    expect(result.complete).toBe(false)
+    expect(result.pagesFetched).toBe(1)
+    expect(result.pagesDiscovered).toBe(2)
+    expect(result.data).toHaveLength(1)
+    expect(result.error).toBe('Gastronomy pagination incomplete (1/2 pages)')
+  })
+
+  test('caps requests even when a source links more pages', async () => {
+    let count = 0
+    const result = await scrapeGastronomiaFeed(
+      async () => {
+        count++
+        return (
+          card('Cafe Uno') + '<a href="?page=2">2</a><a href="?page=3">3</a>'
+        )
+      },
+      { maxPages: 2 }
+    )
+    expect(count).toBe(2)
+    expect(result.complete).toBe(false)
+    expect(result.pagesFetched).toBe(2)
+    expect(result.pagesDiscovered).toBe(3)
+  })
+
+  test('rejects an unrelated or redesigned HTML page without inventing a fetch success', async () => {
+    const result = await scrapeGastronomiaFeed(
+      async () => '<html>Maintenance</html>'
+    )
+    expect(result.data).toEqual([])
+    expect(result.fetchedAt).toBeNull()
+    expect(result.complete).toBe(false)
   })
 })

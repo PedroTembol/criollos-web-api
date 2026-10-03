@@ -79,6 +79,23 @@ describe('catalog cache payload helpers', () => {
     ],
   }
 
+  test('catalog projections retain stale source clock and failure state', () => {
+    const stale = {
+      ...bootstrap,
+      stale: true,
+      staleReason: 'Fixture upstream unavailable',
+    }
+    expect(buildRoutesCatalogResponse(stale)).toMatchObject({
+      stale: true,
+      staleReason: stale.staleReason,
+      fetchedAt: bootstrap.fetchedAt,
+    })
+    expect(buildStopsCatalogResponse(stale)).toMatchObject({
+      stale: true,
+      fetchedAt: bootstrap.fetchedAt,
+    })
+  })
+
   test('routes payload keeps only routes plus fetchedAt for stable ETag generation', () => {
     expect(buildRoutesCatalogResponse(bootstrap)).toEqual({
       routes: bootstrap.routes,

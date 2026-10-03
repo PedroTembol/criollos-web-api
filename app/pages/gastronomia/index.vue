@@ -66,6 +66,13 @@
     </header>
 
     <main class="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-10">
+      <FeedStatus
+        :metadata="displayFeed?.metadata"
+        :pending="pending || refreshing"
+        :error="Boolean(error)"
+        :has-data="Boolean(displayFeed?.data?.length)"
+        @retry="retryFeed"
+      />
       <section
         id="gastronomia-filters"
         class="mb-8 rounded-3xl border border-amber-200 bg-white p-6 shadow-sm"
@@ -481,7 +488,7 @@
       </section>
 
       <div
-        v-if="pending"
+        v-if="pending && !displayFeed?.data?.length"
         class="flex flex-col items-center justify-center py-20"
       >
         <div
@@ -493,7 +500,7 @@
       </div>
 
       <div
-        v-else-if="error"
+        v-else-if="error && !displayFeed?.data?.length"
         class="rounded-3xl border border-red-100 bg-red-50 p-8 text-center"
       >
         <span class="mb-4 block text-4xl">⚠️</span>
@@ -504,7 +511,8 @@
           Hubo un error al conectar con el API Criollos.
         </p>
         <button
-          @click="refresh"
+          :disabled="refreshing || pending"
+          @click="retryFeed"
           class="rounded-full bg-red-600 px-6 py-2 font-bold text-white transition-colors hover:bg-red-700"
         >
           Reintentar
@@ -518,7 +526,7 @@
         aria-live="polite"
       >
         <article
-          v-for="item in feed?.data"
+          v-for="item in displayFeed?.data"
           :key="item.id"
           class="group flex flex-col overflow-hidden rounded-3xl border border-amber-100 bg-white shadow-sm transition-all hover:shadow-xl"
         >
@@ -577,7 +585,12 @@
       </div>
 
       <div
-        v-if="!pending && !error && (!feed?.data || feed?.data.length === 0)"
+        v-if="
+          !pending &&
+          !error &&
+          displayFeed?.metadata?.state !== 'unavailable' &&
+          (!displayFeed?.data || displayFeed?.data.length === 0)
+        "
         id="gastronomia-empty-state"
         class="rounded-3xl border border-dashed border-amber-200 bg-white py-20 text-center"
         role="status"
@@ -633,12 +646,8 @@ import {
   getGastronomySummaryCards,
 } from '../../utils/gastronomySummary'
 
-const config = useRuntimeConfig()
 const route = useRoute()
 const router = useRouter()
-const apiKey =
-  config.public.apiKey ||
-  '118884a9d701e5b0ab4f44322568a3c548fb3efb9f22b1b64f8c446224224c2b'
 
 const normalizeQueryValue = (value) => {
   if (Array.isArray(value)) {
@@ -665,13 +674,9 @@ const queryParams = computed(() => {
   return params
 })
 
-const fetchOptions = {
-  headers: {
-    'x-api-key': apiKey,
-  },
-}
-
-const { data: fullFeed } = await useFetch('/api/v1/gastronomia', fetchOptions)
+const { data: fullFeed, refresh: refreshFullFeed } = await useFetch(
+  '/api/v1/gastronomia'
+)
 
 const {
   data: feed,
@@ -679,10 +684,25 @@ const {
   error,
   refresh,
 } = await useFetch('/api/v1/gastronomia', {
-  ...fetchOptions,
   query: queryParams,
   watch: [queryParams],
 })
+
+const refreshing = ref(false)
+const lastSuccessfulFeed = shallowRef(feed.value)
+watch(feed, (value) => {
+  if (value?.data) lastSuccessfulFeed.value = value
+})
+const displayFeed = computed(() => feed.value || lastSuccessfulFeed.value)
+const retryFeed = async () => {
+  if (refreshing.value || pending.value) return
+  refreshing.value = true
+  try {
+    await Promise.allSettled([refresh(), refreshFullFeed()])
+  } finally {
+    refreshing.value = false
+  }
+}
 
 const categoryOptions = computed(() =>
   getGastronomyCategoryOptions(
@@ -707,7 +727,11 @@ const resultSummary = computed(() => {
     return 'Actualizando vitrina…'
   }
 
-  const count = feed.value?.count ?? 0
+  if (error.value) return 'Resultados sin confirmar; vuelve a intentar.'
+  if (displayFeed.value?.metadata?.state === 'unavailable')
+    return 'Fuente no disponible'
+
+  const count = displayFeed.value?.count ?? 0
   const categoriesCount = categoryOptions.value.length
   const selectedCount = selectedCategories.value.length
   const categoryLabel =
@@ -723,18 +747,23 @@ const resultSummary = computed(() => {
 })
 
 const summaryCards = computed(() =>
-  getGastronomySummaryCards(feed.value?.summary, feed.value?.count ?? 0)
+  getGastronomySummaryCards(
+    displayFeed.value?.summary,
+    displayFeed.value?.count ?? 0
+  )
 )
 const featuredPlaceCards = computed(() =>
-  getGastronomyFeaturedPlaceCards(feed.value?.summary)
+  getGastronomyFeaturedPlaceCards(displayFeed.value?.summary)
 )
 const categorySpotlightCards = computed(() =>
-  getGastronomyCategorySpotlightCards(feed.value?.summary)
+  getGastronomyCategorySpotlightCards(displayFeed.value?.summary)
 )
 const routeCards = computed(() =>
-  getGastronomySuggestedRouteCards(feed.value?.summary)
+  getGastronomySuggestedRouteCards(displayFeed.value?.summary)
 )
-const alertCards = computed(() => getGastronomyAlertCards(feed.value?.summary))
+const alertCards = computed(() =>
+  getGastronomyAlertCards(displayFeed.value?.summary)
+)
 
 watch(
   () => route.query,

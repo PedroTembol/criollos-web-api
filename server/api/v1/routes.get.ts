@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
       applyCatalogConditionalCache(
         event,
         payload,
-        config.cacheTtlCatalog,
+        data.stale ? 30 : config.cacheTtlCatalog,
         data.fetchedAt
       )
     ) {

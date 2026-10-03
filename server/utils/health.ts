@@ -1,7 +1,5 @@
 import { getBootstrapData } from './bootstrap'
-import { getCachedEventos, getCachedGastronomia } from './data'
-import { getCachedJson } from './cache'
-import { getAppConfig } from './config'
+import { getEventosFeed, getGastronomiaFeed, type FeedSnapshot } from './data'
 
 export type HealthStatus = 'healthy' | 'degraded' | 'offline'
 
@@ -59,21 +57,22 @@ async function checkTransportHealth(): Promise<DependencyHealth> {
 
 async function checkScraperHealth(
   type: 'eventos' | 'gastronomia',
-  getter: () => Promise<any[]>
+  getter: () => Promise<FeedSnapshot<unknown>>
 ): Promise<DependencyHealth> {
   const start = Date.now()
-  const cacheKey =
-    type === 'eventos' ? 'eventos:visitacaguas' : 'gastronomia:visitacaguas'
-
   try {
-    const data = await getter()
-    // We check the cache meta to see when it was last updated
-    // getCachedJson doesn't give us the expiration, but we know if it returned data
+    const feed = await getter()
     return {
-      status: data.length > 0 ? 'healthy' : 'degraded',
-      lastSuccessAt: new Date().toISOString(), // Approximation if we just got it or it's in cache
+      status: !feed.lastSuccessAt
+        ? 'offline'
+        : feed.stale || !feed.complete || !feed.data.length
+          ? 'degraded'
+          : 'healthy',
+      lastSuccessAt: feed.lastSuccessAt,
       latencyMs: Date.now() - start,
-      message: data.length > 0 ? null : `No items found in ${type}`,
+      message:
+        feed.staleReason ||
+        (feed.data.length ? null : `No items found in ${type}`),
     }
   } catch (error) {
     return {
@@ -88,8 +87,8 @@ async function checkScraperHealth(
 export async function getGlobalHealth(): Promise<GlobalHealth> {
   const [transport, agenda, gastronomia] = await Promise.all([
     checkTransportHealth(),
-    checkScraperHealth('eventos', getCachedEventos),
-    checkScraperHealth('gastronomia', getCachedGastronomia),
+    checkScraperHealth('eventos', getEventosFeed),
+    checkScraperHealth('gastronomia', getGastronomiaFeed),
   ])
 
   let status: HealthStatus = 'healthy'

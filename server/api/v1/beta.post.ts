@@ -1,24 +1,29 @@
-import { devLog, devError } from '../../utils/logging'
-import { defineEventHandler, readBody } from 'h3'
+import {
+  defineEventHandler,
+  getRequestHeader,
+  getRequestIP,
+  setResponseHeader,
+} from 'h3'
+import {
+  createBetaSignupStore,
+  registerBetaSignup,
+} from '../../utils/betaSignup'
+import {
+  enforceBetaAttemptLimit,
+  readBetaRequestBody,
+} from '../../utils/betaRequest'
+import { sha256Hex } from '../../utils/secureHash'
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event)
-
-  if (!body.email) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Email is required',
-    })
-  }
-
-  // Por ahora loggeamos el interés en la consola/logs del servidor
-  // En el futuro esto podría ir a Supabase o una Google Sheet
-  devLog(
-    `[BETA SIGNUP] New interest from: ${body.email} at ${new Date().toISOString()}`
-  )
-
-  return {
-    ok: true,
-    message: 'Registrado con éxito',
-  }
+  setResponseHeader(event, 'Cache-Control', 'no-store')
+  const client =
+    getRequestHeader(event, 'cf-connecting-ip') ||
+    getRequestIP(event) ||
+    'unknown'
+  enforceBetaAttemptLimit(event, await sha256Hex(client))
+  const body = await readBetaRequestBody(event)
+  const binding =
+    event.context.cloudflare?.env?.BETA_SIGNUPS ??
+    event.context._platform?.cloudflare?.env?.BETA_SIGNUPS
+  return registerBetaSignup(body, createBetaSignupStore(binding))
 })

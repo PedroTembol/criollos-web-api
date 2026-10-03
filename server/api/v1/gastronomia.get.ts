@@ -1,7 +1,9 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { filterGastronomiaFeed } from '../../utils/gastronomia'
 import { applyConditionalCache } from '../../utils/httpCache'
-import { getCachedGastronomia } from '../../utils/data'
+import { getGastronomiaFeed } from '../../utils/data'
+
+import { getFeedMetadata, feedCacheMaxAge } from '../../utils/feedMetadata'
 
 const CACHE_TTL_SECONDS = 60 * 60
 
@@ -28,20 +30,22 @@ export default defineEventHandler(async (event) => {
     limit: Number.isFinite(parsedLimit) ? parsedLimit : null,
   }
 
-  const places = await getCachedGastronomia()
-  const filtered = filterGastronomiaFeed(places, filters)
+  const snapshot = await getGastronomiaFeed()
+  const metadata = getFeedMetadata(snapshot)
+  const filtered = filterGastronomiaFeed(snapshot.data, filters)
   const payload = {
     status: 'success',
     count: filtered.count,
     data: filtered.data,
     summary: filtered.summary,
+    metadata,
   }
 
   if (
     applyConditionalCache(event, {
-      maxAgeSeconds: CACHE_TTL_SECONDS,
+      maxAgeSeconds: feedCacheMaxAge(metadata, CACHE_TTL_SECONDS),
       payload,
-      lastModified: null,
+      lastModified: snapshot.fetchedAt,
     })
   ) {
     return null
