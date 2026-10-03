@@ -24,6 +24,7 @@ export default defineNuxtConfig({
     corsOrigins: process.env.CORS_ORIGINS || '',
     cacheTtlPositions: process.env.CACHE_TTL_POSITIONS || '10',
     cacheTtlCatalog: process.env.CACHE_TTL_CATALOG || '1800',
+    cacheTtlDiscovery: process.env.CACHE_TTL_DISCOVERY || '900',
     cacheTtlBootstrap: process.env.CACHE_TTL_BOOTSTRAP || '300',
     cacheTtlBootstrapStale: process.env.CACHE_TTL_BOOTSTRAP_STALE || '86400',
     public: {

@@ -9,6 +9,7 @@ export type AppConfig = {
   corsOrigins: string[]
   cacheTtlPositions: number
   cacheTtlCatalog: number
+  cacheTtlDiscovery: number
   cacheTtlBootstrap: number
   cacheTtlBootstrapStale: number
 }
@@ -70,6 +71,12 @@ export function getAppConfig(): AppConfig {
         config.cacheTtlCatalog || config.CRIOLLOS_CACHE_TTL_CATALOG || '1800'
       ),
       1800
+    ),
+    cacheTtlDiscovery: toNumber(
+      String(
+        config.cacheTtlDiscovery || config.CRIOLLOS_CACHE_TTL_DISCOVERY || '900'
+      ),
+      900
     ),
     cacheTtlBootstrap: toNumber(
       String(
