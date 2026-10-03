@@ -99,26 +99,63 @@ describe('getTrackingHealthCards', () => {
   })
 
   test('returns empty-state copy when no vehicles are visible', () => {
-    expect(
-      getTrackingHealthCards(
-        {
-          freshnessBuckets: { live: 0, delayed: 0, offline: 0, unknown: 0 },
-          serviceHealth: {
-            status: 'offline',
-            coveragePercent: 0,
-            liveCoveragePercent: 0,
-            routeHealth: {
-              operational: 0,
-              delayed: 0,
-              offline: 0,
-              'no-signal': 0,
-            },
+    const cards = getTrackingHealthCards(
+      {
+        freshnessBuckets: { live: 0, delayed: 0, offline: 0, unknown: 0 },
+        serviceHealth: {
+          status: 'offline',
+          coveragePercent: 0,
+          liveCoveragePercent: 0,
+          routeHealth: {
+            operational: 0,
+            delayed: 0,
+            offline: 0,
+            'no-signal': 0,
           },
-          routes: [],
         },
-        0
-      )[1].hint
-    ).toBe('Todavía no hay unidades visibles para calcular cobertura.')
+        routes: [],
+      },
+      0
+    )
+    expect(cards[0]).toEqual({
+      id: 'status',
+      label: 'Estado del servicio',
+      value: 'Sin señales recientes',
+      hint: 'No hay señales recientes para confirmar el estado actual del servicio.',
+      tone: 'neutral',
+    })
+    expect(cards[1].hint).toBe(
+      'Todavía no hay unidades visibles para calcular cobertura.'
+    )
+  })
+
+  test('does not infer a service outage from old or missing vehicle signals', () => {
+    const cards = getTrackingHealthCards(
+      {
+        freshnessBuckets: { live: 0, delayed: 0, offline: 2, unknown: 1 },
+        serviceHealth: {
+          status: 'offline',
+          coveragePercent: 0,
+          liveCoveragePercent: 0,
+          routeHealth: { offline: 1, 'no-signal': 1 },
+        },
+      },
+      3
+    )
+    expect(cards[0].value).toBe('Sin señales recientes')
+    expect(cards[0].hint).toContain(
+      'para confirmar el estado actual del servicio'
+    )
+    expect(cards[0].tone).toBe('neutral')
+  })
+
+  test('keeps missing tracking metadata neutral instead of declaring an outage', () => {
+    const status = getTrackingHealthCards(null, 0)[0]
+    expect(status.value).toBe('Sin señales recientes')
+    expect(status.hint).toContain(
+      'para confirmar el estado actual del servicio'
+    )
+    expect(status.tone).toBe('neutral')
   })
 })
 

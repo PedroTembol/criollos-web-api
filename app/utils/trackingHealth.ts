@@ -74,11 +74,7 @@ function formatStatus(
     return 'Degradado'
   }
 
-  if (status === 'offline') {
-    return 'Sin servicio'
-  }
-
-  return 'Sin lectura'
+  return 'Sin señales recientes'
 }
 
 function getStatusTone(
@@ -90,10 +86,6 @@ function getStatusTone(
 
   if (status === 'degraded') {
     return 'warning'
-  }
-
-  if (status === 'offline') {
-    return 'critical'
   }
 
   return 'neutral'
@@ -155,7 +147,11 @@ export function getTrackingHealthCards(
       id: 'status',
       label: 'Estado del servicio',
       value: formatStatus(summary?.serviceHealth?.status),
-      hint: formatRouteHealthBreakdown(summary),
+      hint:
+        summary?.serviceHealth?.status === 'healthy' ||
+        summary?.serviceHealth?.status === 'degraded'
+          ? formatRouteHealthBreakdown(summary)
+          : 'No hay señales recientes para confirmar el estado actual del servicio.',
       tone: getStatusTone(summary?.serviceHealth?.status),
     },
     {
