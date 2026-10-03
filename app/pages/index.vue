@@ -12,7 +12,7 @@
         </p>
         <h1
           id="home-heading"
-          class="brand-display text-4xl font-extrabold leading-[1.05] text-[var(--color-ink)] md:text-5xl"
+          class="brand-display text-4xl font-bold leading-[1.15] text-[var(--color-ink)] md:text-5xl"
         >
           Tu día en Caguas
         </h1>
@@ -210,10 +210,7 @@
           <p class="text-xs font-bold uppercase tracking-[0.16em]">
             Unidades reportadas
           </p>
-          <p
-            class="brand-display mt-1 text-4xl font-extrabold"
-            aria-live="polite"
-          >
+          <p class="brand-display mt-1 text-4xl font-bold" aria-live="polite">
             {{ vehicleCount !== null ? vehicleCount : '...' }}
           </p>
         </div>

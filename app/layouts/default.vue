@@ -164,15 +164,6 @@ useHead({
       content: '#16365f',
     },
   ],
-  link: [
-    { rel: 'icon', type: 'image/svg+xml', href: '/criollos.svg' },
-    {
-      rel: 'preload',
-      href: '/fonts/figtree-latin.woff2',
-      as: 'font',
-      type: 'font/woff2',
-      crossorigin: '',
-    },
-  ],
+  link: [{ rel: 'icon', type: 'image/svg+xml', href: '/criollos.svg' }],
 })
 </script>

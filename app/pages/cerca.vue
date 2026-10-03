@@ -484,8 +484,8 @@ useHead({
 }
 .nearby-title {
   font-size: clamp(2.35rem, 5vw, 3.5rem);
-  font-weight: 800;
-  line-height: 1.08;
+  font-weight: 700;
+  line-height: 1.15;
 }
 .nearby-lead {
   max-width: 36rem;

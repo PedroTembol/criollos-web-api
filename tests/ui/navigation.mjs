@@ -52,6 +52,56 @@ try {
         hydrationErrors.push(message.text())
     })
     const view = async (route) => {
+      const typography = await page.evaluate(async () => {
+        await document.fonts.ready
+        return {
+          interLoaded: [...document.fonts].some(
+            (font) => font.family === 'Inter' && font.status === 'loaded'
+          ),
+          accentsAvailable: document.fonts.check(
+            '16px Inter',
+            'áéíóúüñÁÉÍÓÚÜÑ¿¡'
+          ),
+          headings: [
+            ...document.querySelectorAll('main h1, main h2, main h3'),
+          ].map((element) => {
+            const style = getComputedStyle(element)
+            return {
+              text: element.textContent.trim(),
+              family: style.fontFamily,
+              weight: Number(style.fontWeight),
+              transform: style.transform,
+              stretch: style.fontStretch,
+              clipped:
+                element.scrollWidth > element.clientWidth + 1 ||
+                (['hidden', 'clip'].includes(style.overflowY) &&
+                  element.scrollHeight > element.clientHeight + 1) ||
+                !['none', ''].includes(style.webkitLineClamp),
+            }
+          }),
+        }
+      })
+      assert(typography.interLoaded, `${route} loads local Inter`)
+      assert(typography.accentsAvailable, `${route} supports Spanish accents`)
+      for (const heading of typography.headings) {
+        assert(heading.family.includes('Inter'), `${heading.text} uses Inter`)
+        assert(heading.weight <= 700, `${heading.text} uses a readable weight`)
+        assert.equal(
+          heading.transform,
+          'none',
+          `${heading.text} is not transformed`
+        )
+        assert.equal(
+          heading.stretch,
+          '100%',
+          `${heading.text} is not stretched`
+        )
+        assert.equal(
+          heading.clipped,
+          false,
+          `${heading.text} wraps without clipping`
+        )
+      }
       await page.evaluate(() => {
         document.activeElement?.blur()
         window.scrollTo({ top: 0, behavior: 'instant' })
@@ -260,6 +310,7 @@ try {
         'main-landmark-no-overflow',
         'mobile-navigation',
         'no-client-or-hydration-errors',
+        'inter-headings-accents-no-stretch-or-clipping',
       ],
       clientErrors,
       hydrationErrors,

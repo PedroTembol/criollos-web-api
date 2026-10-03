@@ -595,8 +595,8 @@ useHead({
 .catalog-heading h1 {
   margin-top: 0.45rem;
   font-size: clamp(2rem, 4vw, 3.25rem);
-  font-weight: 800;
-  line-height: 1.1;
+  font-weight: 700;
+  line-height: 1.18;
 }
 .catalog-heading > p:last-child {
   margin-top: 0.7rem;
@@ -701,7 +701,7 @@ useHead({
 }
 .catalog-results-head h2 {
   font-size: 1.3rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 .catalog-results-head p {
   margin-top: 0.2rem;
@@ -761,7 +761,7 @@ useHead({
 }
 .catalog-body h3 {
   font-size: 1.3rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -838,7 +838,7 @@ useHead({
 }
 .catalog-state h3 {
   font-size: 1.2rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 .catalog-state p {
   max-width: 30rem;
@@ -886,7 +886,7 @@ useHead({
   border-radius: var(--radius);
 }
 .catalog-idea-grid h3 {
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.35;
 }
 .catalog-idea-grid p {
