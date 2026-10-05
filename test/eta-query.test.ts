@@ -42,6 +42,23 @@ test('ETA selects only the requested recent vehicle, never a different same-rout
   expect(resolveEtaPath(data, 2, 5, now)).toBe('18.19,-66.09|18.2,-66.1')
   expect(resolveEtaPath({ ...data, stale: true }, 2, 5, now)).toBe('')
   expect(resolveEtaPath(data, 2, 5, now + 180000)).toBe('')
+  for (const when of [
+    'invalid',
+    '2026-10-03T17:00:00',
+    '2026-10-03T17:00:00.001Z',
+  ]) {
+    expect(
+      resolveEtaPath(
+        { ...data, positions: [{ ...data.positions[0], when }] },
+        2,
+        5,
+        now
+      )
+    ).toBe('')
+  }
+  expect(
+    resolveEtaPath({ ...data, telemetry: { state: 'incompatible' } }, 2, 5, now)
+  ).toBe('')
   expect(
     resolveEtaPath(
       { ...data, routePoints: [{ id: 5, lat: 18.2, lng: -66.1 }] },

@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { getGlobalHealth } from '../server/utils/health'
 import { getEventosFeed, getGastronomiaFeed } from '../server/utils/data'
 import { getBootstrapData } from '../server/utils/bootstrap'
@@ -24,15 +24,65 @@ const successfulFeed = () => ({
 })
 
 beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-10-03T12:01:00Z'))
   vi.mocked(getBootstrapData).mockResolvedValue({
-    positions: [{}],
+    positions: [{ when: fetchedAt }],
     fetchedAt,
   } as any)
   vi.mocked(getEventosFeed).mockResolvedValue(successfulFeed() as any)
   vi.mocked(getGastronomiaFeed).mockResolvedValue(successfulFeed() as any)
 })
 
+afterEach(() => vi.useRealTimers())
+
 describe('Health Service', () => {
+  it.each([
+    undefined,
+    '',
+    'invalid',
+    '2026-10-03T12:00:00',
+    '2026-10-03T11:58:59Z',
+    '2026-10-03T12:01:00.001Z',
+  ])(
+    'does not declare unknown, stale or future telemetry healthy (%s)',
+    async (when) => {
+      vi.mocked(getBootstrapData).mockResolvedValueOnce({
+        positions: [{ when }],
+        fetchedAt,
+      } as any)
+      const health = await getGlobalHealth()
+      expect(health.dependencies.transport.status).toBe('degraded')
+      expect(health.dependencies.transport.lastSuccessAt).toBe(fetchedAt)
+    }
+  )
+
+  it('accepts the exact 120-second boundary but reports incompatible telemetry as degraded', async () => {
+    const data = { positions: [{ when: '2026-10-03T11:59:00Z' }], fetchedAt }
+    vi.mocked(getBootstrapData).mockResolvedValueOnce(data as any)
+    expect((await getGlobalHealth()).dependencies.transport.status).toBe(
+      'healthy'
+    )
+    vi.mocked(getBootstrapData).mockResolvedValueOnce({
+      ...data,
+      telemetry: { state: 'incompatible', receivedRows: 2, rejectedRows: 1 },
+    } as any)
+    const health = await getGlobalHealth()
+    expect(health.dependencies.transport.status).toBe('degraded')
+    expect(health.dependencies.transport.message).toContain('incompatible')
+  })
+
+  it('keeps a fallback degraded even when it contains a recent signal', async () => {
+    vi.mocked(getBootstrapData).mockResolvedValueOnce({
+      positions: [{ when: fetchedAt }],
+      fetchedAt,
+      stale: true,
+      staleReason: 'Upstream timeout',
+    } as any)
+    const health = await getGlobalHealth()
+    expect(health.dependencies.transport.status).toBe('degraded')
+    expect(health.dependencies.transport.message).toBe('Upstream timeout')
+  })
   it('reports source success timestamps instead of the health request time', async () => {
     const health = await getGlobalHealth()
     expect(health.status).toBe('healthy')

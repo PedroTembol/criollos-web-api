@@ -1,5 +1,6 @@
 import { getBootstrapData } from './bootstrap'
 import { getEventosFeed, getGastronomiaFeed, type FeedSnapshot } from './data'
+import { getTelemetryAgeSeconds, RECENT_TELEMETRY_SECONDS } from './telemetry'
 
 export type HealthStatus = 'healthy' | 'degraded' | 'offline'
 
@@ -35,14 +36,22 @@ async function checkTransportHealth(): Promise<DependencyHealth> {
       }
     }
 
+    const incompatible = data.telemetry?.state === 'incompatible'
+    const hasRecentSignal = data.positions.some((position) => {
+      const age = getTelemetryAgeSeconds(position.when)
+      return age !== null && age <= RECENT_TELEMETRY_SECONDS
+    })
     return {
-      status: data.positions.length > 0 ? 'healthy' : 'degraded',
+      status: !incompatible && hasRecentSignal ? 'healthy' : 'degraded',
       lastSuccessAt: data.fetchedAt,
       latencyMs: Date.now() - start,
-      message:
-        data.positions.length > 0
+      message: incompatible
+        ? 'Vehicle telemetry payload incompatible'
+        : hasRecentSignal
           ? null
-          : 'No active vehicles found in upstream',
+          : data.positions.length
+            ? 'No recent interpretable vehicle signals'
+            : 'No vehicle telemetry available',
     }
   } catch (error) {
     return {

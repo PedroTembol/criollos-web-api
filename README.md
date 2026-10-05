@@ -209,3 +209,9 @@ bun run preview
 ```
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+
+## Validación de telemetría
+
+Bootstrap y tracking incluyen `telemetry.state` (`available`, `empty` o `incompatible`), `receivedRows` y `rejectedRows`. Una lista válida vacía no equivale a un formato desconocido. Las filas incompatibles no se convierten en vehículos; el catálogo se conserva. `/api/v1/vehicles/positions` y su alias `/vehicles/positions` comparten parser y devuelven 502 con metadata y `Cache-Control: no-store` ante incompatibilidad, frente a 200 para una lista válida vacía. Las claves internas de cache v2 evitan reutilizar snapshots anteriores a estas validaciones.
+
+Health declara el transporte saludable sólo con al menos un timestamp interpretable, con zona horaria explícita, de 0 a 120 segundos y un contrato compatible. Timestamps ausentes, inválidos, sin zona horaria o futuros tienen frescura `unknown`; los reportes más antiguos son stale. Una lectura exitosa sin señales recientes es degraded, sin inferir una interrupción municipal. `lastSuccessAt` y `fetchedAt` siguen siendo relojes de lectura del snapshot, no de llegada ni de reporte de un vehículo. El índice `GetAll[5]` permanece sin cambios.

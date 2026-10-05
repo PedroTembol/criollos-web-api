@@ -1,3 +1,5 @@
+import { decodePositions, type TelemetryContract } from './positionDecoder'
+
 type AssetRaw = [number, number, string]
 type MarkerRaw = [number, number, string, string]
 type RouteRaw = [
@@ -21,20 +23,6 @@ type RoutePointRaw = [
   number | null,
   number,
   number,
-  string,
-  number,
-  number,
-  number,
-]
-type PositionRaw = [
-  number,
-  number,
-  string,
-  number,
-  number,
-  string,
-  number,
-  string,
   string,
   number,
   number,
@@ -109,20 +97,7 @@ export type BootstrapData = {
   stops: RoutePoint[]
   config: Record<string, string>
   positions: Position[]
-}
-
-function parseLatLngFromTrail(trail: string) {
-  if (!trail) {
-    return { lat: null, lng: null }
-  }
-  const first = trail.split('*')[0]
-  const [latRaw, lngRaw] = first.split(',')
-  const lat = Number(latRaw)
-  const lng = Number(lngRaw)
-  return {
-    lat: Number.isFinite(lat) ? lat : null,
-    lng: Number.isFinite(lng) ? lng : null,
-  }
+  telemetry?: TelemetryContract
 }
 
 function markerLatLng(latlong: string) {
@@ -138,13 +113,19 @@ function markerLatLng(latlong: string) {
   }
 }
 
-export function normalizeGetAll(raw: unknown[]): BootstrapData {
+export function normalizeGetAll(raw: unknown): BootstrapData {
+  if (
+    !Array.isArray(raw) ||
+    raw.length < 5 ||
+    !raw.slice(0, 5).every(Array.isArray)
+  ) {
+    throw new Error('Transport catalog payload incompatible')
+  }
   const assetsRaw = raw[0] as AssetRaw[]
   const markersRaw = raw[1] as MarkerRaw[]
   const routesRaw = raw[2] as RouteRaw[]
   const routePointsRaw = raw[3] as RoutePointRaw[]
   const configRaw = raw[4] as ConfigRaw
-  const positionsRaw = raw[5] as PositionRaw[]
 
   const assets = assetsRaw.map(([id, groupId, description]) => ({
     id,
@@ -221,40 +202,7 @@ export function normalizeGetAll(raw: unknown[]): BootstrapData {
 
   const config = Object.fromEntries(configRaw)
 
-  const positions = positionsRaw.map(
-    ([
-      assetId,
-      driverId,
-      when,
-      speed,
-      inputX,
-      trail,
-      status,
-      msg,
-      extendedDescription,
-      routeId,
-      routePointNextId,
-      routePointPrevId,
-    ]) => {
-      const { lat, lng } = parseLatLngFromTrail(trail)
-      return {
-        assetId,
-        driverId,
-        when,
-        speed,
-        inputX,
-        trail,
-        status,
-        msg,
-        extendedDescription,
-        routeId,
-        routePointNextId,
-        routePointPrevId,
-        lat,
-        lng,
-      }
-    }
-  )
+  const { positions, telemetry } = decodePositions(raw[5])
 
   const stops = routePoints.filter((point) => point.markerId !== null)
 
@@ -266,5 +214,6 @@ export function normalizeGetAll(raw: unknown[]): BootstrapData {
     stops,
     config,
     positions,
+    telemetry,
   }
 }

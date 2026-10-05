@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as h3 from 'h3'
 import { getEventosFeed, getGastronomiaFeed } from '../server/utils/data'
 import { getBootstrapData } from '../server/utils/bootstrap'
@@ -58,6 +58,9 @@ const snapshot = (data: any[], overrides = {}) => ({
 })
 
 beforeEach(() => {
+  // Keep the fictional October 4 event upcoming as the real calendar advances.
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date(fetchedAt))
   vi.mocked(getEventosFeed).mockResolvedValue(snapshot([event]))
   vi.mocked(getGastronomiaFeed).mockResolvedValue(snapshot([place]))
   vi.mocked(getBootstrapData).mockResolvedValue({
@@ -65,6 +68,8 @@ beforeEach(() => {
     fetchedAt,
   })
 })
+
+afterEach(() => vi.useRealTimers())
 
 async function request(handler: any, path = '/', headers?: HeadersInit) {
   const app = h3.createApp({ debug: false })
