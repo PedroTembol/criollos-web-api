@@ -80,6 +80,7 @@ export default defineEventHandler(async (event) => {
   const snapshot = buildTrackingSnapshot(data, data.fetchedAt)
   const filtered = {
     ...filterTrackingSnapshot(snapshot, parseTrackingFilters(event)),
+    telemetry: data.telemetry,
     ...(data.stale ? { stale: true, staleReason: data.staleReason } : {}),
   }
 

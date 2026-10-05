@@ -1,4 +1,5 @@
 import { createError } from 'h3'
+import { getTelemetryAgeSeconds, RECENT_TELEMETRY_SECONDS } from './telemetry'
 
 type EtaQuery = {
   assetId?: unknown
@@ -85,7 +86,7 @@ export function resolveEtaPath(
   stopId: number,
   now = Date.now()
 ): string {
-  if (data.stale) return ''
+  if (data.stale || data.telemetry?.state === 'incompatible') return ''
   const asset = data.assets.find(
     (item) => item.id === assetId || item.description === String(assetId)
   )
@@ -95,13 +96,12 @@ export function resolveEtaPath(
       ? data.positions.find((item) => item.assetId === asset.id)
       : undefined)
   const stop = data.routePoints.find((item) => item.id === stopId)
-  const age = vehicle ? now - Date.parse(vehicle.when) : Infinity
+  const age = vehicle ? getTelemetryAgeSeconds(vehicle.when, now) : null
   if (
     !vehicle ||
     !stop ||
-    !Number.isFinite(age) ||
-    age < 0 ||
-    age > 120000 ||
+    age === null ||
+    age > RECENT_TELEMETRY_SECONDS ||
     vehicle.lat === null ||
     vehicle.lng === null
   )

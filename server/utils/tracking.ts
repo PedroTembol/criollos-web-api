@@ -1,3 +1,4 @@
+import { getTelemetryAgeSeconds, parseTelemetryTimestamp } from './telemetry'
 import type {
   Asset,
   BootstrapData,
@@ -230,12 +231,7 @@ function getStatusLabel(status: number, speed: number) {
 }
 
 function getFreshnessSeconds(when: string, now = new Date()) {
-  const at = new Date(when)
-  if (Number.isNaN(at.getTime())) {
-    return null
-  }
-
-  return Math.max(0, Math.round((now.getTime() - at.getTime()) / 1000))
+  return getTelemetryAgeSeconds(when, now.getTime())
 }
 
 function getFreshnessLabel(
@@ -468,8 +464,9 @@ function toRouteLeadVehicle(
 
 function getLastReportedAt(vehicles: TrackingVehicleSnapshot[]): string | null {
   const timestamps = vehicles
-    .map((vehicle) => new Date(vehicle.when).getTime())
-    .filter((timestamp) => Number.isFinite(timestamp))
+    .filter((vehicle) => vehicle.freshnessSeconds !== null)
+    .map((vehicle) => parseTelemetryTimestamp(vehicle.when))
+    .filter((timestamp): timestamp is number => timestamp !== null)
 
   if (!timestamps.length) {
     return null

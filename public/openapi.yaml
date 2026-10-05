@@ -53,6 +53,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PositionsResponse'
+        '502':
+          description: El proveedor devolvió un formato de telemetría incompatible; no equivale a una lista válida vacía.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PositionsResponse'
   /vehicles/nearby:
     get:
       summary: Vehículos cercanos a una coordenada
@@ -678,9 +684,24 @@ components:
       in: header
       name: x-api-key
   schemas:
+    TelemetryContract:
+      type: object
+      properties:
+        state:
+          type: string
+          enum: [available, empty, incompatible]
+        receivedRows:
+          type: integer
+          nullable: true
+          minimum: 0
+        rejectedRows:
+          type: integer
+          minimum: 0
     BootstrapResponse:
       type: object
       properties:
+        telemetry:
+          $ref: '#/components/schemas/TelemetryContract'
         assets:
           type: array
           items:
@@ -715,6 +736,8 @@ components:
     PositionsResponse:
       type: object
       properties:
+        telemetry:
+          $ref: '#/components/schemas/TelemetryContract'
         positions:
           type: array
           items:
@@ -725,6 +748,8 @@ components:
     TrackingResponse:
       type: object
       properties:
+        telemetry:
+          $ref: '#/components/schemas/TelemetryContract'
         vehicles:
           type: array
           items:

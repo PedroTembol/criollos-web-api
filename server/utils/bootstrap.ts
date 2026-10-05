@@ -38,7 +38,8 @@ export async function getBootstrapData(
 ): Promise<BootstrapResponse> {
   const config = getAppConfig()
   const markerKey = idMarker ? String(idMarker) : 'all'
-  const cacheKey = `bootstrap:${config.idClient}:${markerKey}`
+  // Do not reuse pre-validation snapshots persisted in Cloudflare's cache.
+  const cacheKey = `bootstrap:v2:${config.idClient}:${markerKey}`
   const staleCacheKey = `${cacheKey}:last-known-good`
 
   const cached = await getCachedJson<BootstrapResponse>(cacheKey)
