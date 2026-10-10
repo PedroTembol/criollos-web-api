@@ -1,18 +1,18 @@
 <template>
   <section
     data-testid="feed-status"
-    class="mb-6 rounded-2xl border p-4"
+    class="mb-6 rounded-[var(--radius)] border p-4"
     :class="
       status.tone === 'warning' || status.tone === 'error'
-        ? 'border-amber-300 bg-amber-50 text-amber-950'
-        : 'border-slate-200 bg-white text-slate-700'
+        ? 'border-[var(--color-ochre)] bg-[var(--color-ochre-soft)] text-[var(--color-warning)]'
+        : 'border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-ink-soft)]'
     "
     role="status"
     aria-live="polite"
   >
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 class="font-bold">{{ status.title }}</h2>
+        <h2 class="font-bold text-[var(--color-ink)]">{{ status.title }}</h2>
         <p class="mt-1 text-sm">{{ status.message }}</p>
         <p v-if="status.updated" class="mt-2 text-xs">
           {{
@@ -32,7 +32,7 @@
       </div>
       <button
         type="button"
-        class="rounded-xl border border-current px-4 py-2 text-sm font-bold disabled:cursor-wait disabled:opacity-50"
+        class="min-h-[var(--tap)] rounded-full border border-current px-4 py-2 text-sm font-bold disabled:cursor-wait disabled:opacity-50"
         :disabled="pending"
         @click="!pending && emit('retry')"
       >

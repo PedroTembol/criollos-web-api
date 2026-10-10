@@ -17,7 +17,7 @@
     "test:bun": "bun tests/run-local.ts",
     "test:vitest": "CRIOLLOS_LIVE_TESTS=0 vitest run",
     "test:live": "CRIOLLOS_LIVE_TESTS=1 vitest run tests/api.spec.ts",
-    "test:ui:fixtures": "node tests/ui/feeds.mjs && node tests/ui/flows.mjs && node tests/ui/beta.mjs"
+    "test:ui:fixtures": "node tests/ui/feeds.mjs && node tests/ui/flows.mjs && node tests/ui/navigation.mjs"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

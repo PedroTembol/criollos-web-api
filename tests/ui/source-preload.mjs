@@ -1,4 +1,6 @@
 // Local UI verification only: fictional source responses, no production reads.
+// The browser suite exercises several isolated sessions against one local IP.
+process.env.RATE_LIMIT_RPM ??= '1000'
 const originalFetch = globalThis.fetch.bind(globalThis)
 const foodHtml = `
   <article data-place-card><h2>Cafe de Prueba Uno</h2>

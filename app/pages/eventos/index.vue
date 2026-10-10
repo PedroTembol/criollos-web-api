@@ -1,138 +1,61 @@
 <template>
-  <div class="flex min-h-screen flex-col bg-rose-50/30">
-    <nav
-      aria-label="Atajos de página"
-      class="sr-only focus-within:not-sr-only focus-within:px-6 focus-within:py-4 focus-within:bg-white focus-within:border-b focus-within:border-rose-200"
-    >
-      <div
-        class="mx-auto flex max-w-5xl flex-wrap gap-3 text-sm font-bold text-[#CE1126]"
-      >
-        <a
-          href="#eventos-filters"
-          class="rounded-full border border-[#CE1126]/20 bg-[#CE1126]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#CE1126]"
-          >Ir a filtros</a
-        >
-        <a
-          href="#eventos-summary-cards"
-          class="rounded-full border border-[#CE1126]/20 bg-[#CE1126]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#CE1126]"
-          >Ir a resumen editorial</a
-        >
-        <a
-          href="#eventos-featured-plans"
-          class="rounded-full border border-[#CE1126]/20 bg-[#CE1126]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#CE1126]"
-          >Ir a planes destacados</a
-        >
-        <a
-          href="#eventos-results"
-          class="rounded-full border border-[#CE1126]/20 bg-[#CE1126]/5 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#CE1126]"
-          >Ir a la agenda</a
-        >
-      </div>
-    </nav>
-
-    <header class="bg-[#CE1126] px-6 py-6 text-white shadow-md">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <NuxtLink to="/" class="group flex items-center gap-3">
-            <span class="text-3xl transition-transform group-hover:scale-110"
-              >🍍</span
-            >
-            <h1 class="text-xl font-bold uppercase tracking-tight">
-              Criollos <span class="text-[#FFD700]">Eventos</span>
-            </h1>
-          </NuxtLink>
-        </div>
-        <div
-          class="flex flex-wrap items-center gap-3 text-xs font-bold uppercase tracking-widest"
-        >
-          <NuxtLink
-            to="/discovery"
-            class="rounded-full border border-white/30 px-3 py-1.5 transition hover:bg-white/10"
-            >Discovery</NuxtLink
-          >
-          <NuxtLink
-            to="/gastronomia"
-            class="rounded-full border border-white/30 px-3 py-1.5 transition hover:bg-white/10"
-            >Gastronomía</NuxtLink
-          >
-          <span class="rounded-full bg-white/20 px-3 py-1.5">Beta</span>
-        </div>
-      </div>
+  <main class="page-wrap catalog-page">
+    <header class="catalog-heading">
+      <p class="catalog-eyebrow">
+        <CalendarDays :size="17" aria-hidden="true" /> Agenda de Caguas
+      </p>
+      <h1 class="brand-display">Haz espacio para un buen plan.</h1>
+      <p>
+        Encuentra eventos y actividades. Confirma el horario y los detalles en
+        la fuente antes de salir.
+      </p>
     </header>
 
-    <main class="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-10">
-      <FeedStatus
-        :metadata="displayFeed?.metadata"
-        :pending="pending || refreshing"
-        :error="Boolean(error)"
-        :has-data="Boolean(displayFeed?.data?.length)"
-        @retry="retryFeed"
-      />
-      <section
-        id="eventos-filters"
-        class="mb-8 rounded-3xl border border-rose-200 bg-white p-6 shadow-sm"
+    <section
+      id="eventos-filters"
+      class="surface catalog-tools"
+      aria-label="Buscar eventos"
+    >
+      <form
+        aria-describedby="eventos-results-summary"
+        @submit.prevent="applySearch"
       >
-        <div
-          class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"
-        >
-          <div>
-            <p
-              class="mb-2 text-sm font-black uppercase tracking-[0.2em] text-[#CE1126]"
-            >
-              Agenda cultural
-            </p>
-            <h2 class="text-3xl font-black text-slate-900">
-              Explora eventos de Caguas con filtros rápidos
-            </h2>
-            <p class="mt-2 max-w-2xl text-slate-600">
-              Navega la agenda pública del Valle del Turabo por categoría,
-              búsqueda textual o ventana de fechas, con metadata editorial lista
-              para detectar qué viene ahora mismo.
-            </p>
+        <div class="catalog-search">
+          <div class="catalog-field">
+            <label for="eventos-search">Buscar</label>
+            <input
+              id="eventos-search"
+              v-model="searchDraft"
+              type="search"
+              class="field"
+              placeholder="Nombre, lugar o actividad"
+            />
           </div>
-          <p
-            id="eventos-results-summary"
-            class="text-sm text-slate-500"
-            aria-live="polite"
+          <button type="submit" class="btn-primary">
+            <Search :size="17" aria-hidden="true" /> Buscar
+          </button>
+          <button
+            v-if="hasActiveFilters"
+            type="button"
+            class="btn-secondary"
+            @click="clearFilters"
           >
-            {{ resultSummary }}
-          </p>
+            Limpiar
+          </button>
         </div>
-
-        <form
-          class="mt-6 flex flex-col gap-4"
-          aria-describedby="eventos-results-summary"
-          @submit.prevent="applySearch"
-        >
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <label
-                for="eventos-search"
-                class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-              >
-                Buscar
-              </label>
-              <input
-                id="eventos-search"
-                v-model="searchDraft"
-                type="search"
-                placeholder="Ej. bomba, plaza, familia..."
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-inner outline-none transition focus:border-[#CE1126]"
-              />
-            </div>
-
-            <div>
-              <label
-                for="eventos-category"
-                class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-              >
-                Categoría
-              </label>
+        <details>
+          <summary>
+            <SlidersHorizontal :size="17" aria-hidden="true" /> Categoría y
+            fechas
+          </summary>
+          <div class="catalog-filter-grid">
+            <div class="catalog-field">
+              <label for="eventos-category">Categoría</label>
               <select
                 id="eventos-category"
                 v-model="selectedCategory"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-[#CE1126]"
-                @change="applyFilters"
+                class="field"
+                @change="applyFilters('category')"
               >
                 <option value="">Todas las categorías</option>
                 <option
@@ -144,378 +67,194 @@
                 </option>
               </select>
             </div>
-          </div>
-
-          <div
-            class="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
-          >
-            <div>
-              <label
-                for="eventos-from"
-                class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-              >
-                Desde
-              </label>
+            <div class="catalog-field">
+              <label for="eventos-from">Desde</label>
               <input
                 id="eventos-from"
                 v-model="fromDraft"
                 type="date"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-[#CE1126]"
-                @change="applyFilters"
+                class="field"
+                @change="applyFilters('from')"
               />
             </div>
-
-            <div>
-              <label
-                for="eventos-to"
-                class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-              >
-                Hasta
-              </label>
+            <div class="catalog-field">
+              <label for="eventos-to">Hasta</label>
               <input
                 id="eventos-to"
                 v-model="toDraft"
                 type="date"
-                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-[#CE1126]"
-                @change="applyFilters"
+                class="field"
+                @change="applyFilters('to')"
               />
             </div>
-
-            <div class="flex items-end gap-3">
-              <button
-                type="submit"
-                class="inline-flex flex-1 items-center justify-center rounded-2xl bg-[#CE1126] px-5 py-3 text-sm font-black uppercase tracking-widest text-white transition hover:bg-[#b00e20]"
-              >
-                Filtrar
-              </button>
-              <button
-                v-if="hasActiveFilters"
-                type="button"
-                class="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                @click="clearFilters"
-              >
-                Limpiar
-              </button>
-            </div>
           </div>
+        </details>
 
-          <div
-            v-if="activeFilters.length"
-            class="flex flex-wrap items-center gap-2"
-            aria-live="polite"
-            aria-label="Filtros activos"
-          >
-            <span
-              class="text-xs font-black uppercase tracking-[0.2em] text-slate-500"
-              >Activos</span
-            >
-            <button
-              v-for="filter in activeFilters"
-              :key="filter.key"
-              type="button"
-              class="inline-flex items-center gap-2 rounded-full border border-[#CE1126]/20 bg-[#CE1126]/5 px-3 py-1.5 text-sm font-bold text-[#CE1126] transition hover:border-[#CE1126]/40 hover:bg-[#CE1126]/10"
-              :aria-label="`Quitar filtro de ${filter.label.toLowerCase()}: ${filter.value}`"
-              @click="removeFilter(filter.key)"
-            >
-              <span>{{ filter.label }}: {{ filter.value }}</span>
-              <span aria-hidden="true">✕</span>
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section
-        id="eventos-summary-cards"
-        class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3"
-        aria-label="Resumen editorial de la agenda visible"
-      >
-        <article
-          v-for="card in summaryCards"
-          :key="card.id"
-          class="rounded-3xl border border-rose-200/70 bg-white p-5 shadow-sm"
+        <div
+          v-if="activeFilters.length"
+          class="catalog-chips catalog-active"
+          aria-label="Filtros activos"
         >
-          <p
-            class="text-xs font-black uppercase tracking-[0.2em] text-slate-500"
+          <button
+            v-for="filter in activeFilters"
+            :key="filter.key"
+            type="button"
+            class="catalog-chip"
+            :aria-label="`Quitar filtro de ${filter.label.toLowerCase()}: ${filter.value}`"
+            @click="removeFilter(filter.key)"
           >
-            {{ card.label }}
-          </p>
-          <h3 class="mt-3 text-2xl font-black text-slate-900 leading-tight">
-            {{ card.value }}
-          </h3>
-          <p class="mt-3 text-sm text-slate-600 leading-relaxed">
-            {{ card.hint }}
-          </p>
-        </article>
-      </section>
+            <span>{{ filter.label }}: {{ filter.value }}</span
+            ><X :size="14" aria-hidden="true" />
+          </button>
+        </div>
+      </form>
+    </section>
 
-      <section
-        v-if="alertCards.length"
-        class="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3"
-        aria-label="Alertas editoriales de la agenda visible"
-      >
-        <article
-          v-for="alert in alertCards"
-          :key="alert.id"
-          class="rounded-3xl border p-5 shadow-sm"
-          :class="
-            alert.severity === 'warning'
-              ? 'border-[#CE1126]/20 bg-[#CE1126]/5'
-              : 'border-amber-200 bg-amber-50/80'
+    <section aria-labelledby="eventos-results-heading">
+      <div class="catalog-results-head">
+        <div>
+          <h2 id="eventos-results-heading" class="brand-display">La agenda</h2>
+          <p id="eventos-results-summary" aria-live="polite">
+            {{ resultSummary }}
+          </p>
+        </div>
+        <a
+          v-if="
+            displayFeed?.data?.length &&
+            !error &&
+            displayFeed?.metadata?.state !== 'unavailable'
           "
+          :href="calendarDownloadUrl"
+          class="btn-secondary"
         >
-          <p
-            class="text-xs font-black uppercase tracking-[0.2em]"
-            :class="
-              alert.severity === 'warning' ? 'text-[#CE1126]' : 'text-amber-700'
-            "
-          >
-            {{ alert.eyebrow }}
-          </p>
-          <h3 class="mt-3 text-2xl font-black text-slate-900 leading-tight">
-            {{ alert.title }}
-          </h3>
-          <p class="mt-3 text-sm text-slate-600 leading-relaxed">
-            {{ alert.body }}
-          </p>
-          <p
-            class="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
-          >
-            {{ alert.meta }}
-          </p>
-        </article>
-      </section>
+          <Download :size="16" aria-hidden="true" /> Descargar agenda
+        </a>
+      </div>
 
-      <section
-        v-if="featuredPlanCards.length"
-        id="eventos-featured-plans"
-        class="mb-8 rounded-3xl border border-[#CE1126]/15 bg-gradient-to-br from-white to-rose-50 p-6 shadow-sm"
-        aria-label="Planes destacados de la agenda visible"
-      >
-        <div
-          class="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between"
-        >
-          <div>
-            <p
-              class="text-xs font-black uppercase tracking-[0.2em] text-[#CE1126]"
-            >
-              Planes destacados
-            </p>
-            <h3 class="mt-2 text-2xl font-black text-slate-900">
-              Convierte la agenda visible en próximos planes
-            </h3>
-          </div>
-          <p class="max-w-xl text-sm text-slate-600">
-            Priorizamos los próximos días con eventos confirmados para que el
-            ciudadano pueda abrir detalles, guardar calendario y decidir rápido.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <article
-            v-for="plan in featuredPlanCards"
-            :key="plan.id"
-            class="flex h-full flex-col rounded-3xl border border-rose-200 bg-white p-5 shadow-sm"
-          >
-            <p
-              class="text-xs font-black uppercase tracking-[0.2em] text-[#CE1126]"
-            >
-              {{ plan.eyebrow }}
-            </p>
-            <h4 class="mt-3 text-xl font-black leading-tight text-slate-900">
-              {{ plan.title }}
-            </h4>
-            <p class="mt-3 text-sm leading-relaxed text-slate-600">
-              {{ plan.body }}
-            </p>
-            <p
-              class="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
-            >
-              {{ plan.meta }}
-            </p>
-            <div
-              class="mt-auto flex flex-wrap gap-2 pt-5"
-              aria-label="Categorías del plan"
-            >
-              <span
-                v-for="category in plan.categoryLabels.slice(0, 3)"
-                :key="`${plan.id}-${category}`"
-                class="rounded-full bg-[#FFD700]/20 px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-700"
-              >
-                {{ category }}
-              </span>
-            </div>
-            <div class="mt-5 flex flex-wrap gap-3">
-              <a
-                v-if="plan.primaryEventHref"
-                :href="plan.primaryEventHref"
-                target="_blank"
-                rel="noreferrer"
-                class="inline-flex items-center gap-2 text-sm font-black uppercase tracking-widest text-[#CE1126] transition-all hover:gap-3"
-              >
-                Ver plan
-                <span>→</span>
-              </a>
-              <a
-                :href="`#event-${plan.primaryEventId}`"
-                class="inline-flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-700 transition-all hover:gap-3"
-                :aria-label="`Saltar al evento ${plan.primaryEventTitle}`"
-              >
-                Ver en agenda
-                <span>↓</span>
-              </a>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section
-        class="mb-8 rounded-3xl border border-rose-200 bg-white p-6 shadow-sm"
-        aria-label="Exportar agenda filtrada"
-      >
-        <div
-          class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
-        >
-          <div>
-            <p
-              class="text-xs font-black uppercase tracking-[0.2em] text-[#CE1126]"
-            >
-              Llévatelo al calendario
-            </p>
-            <h3 class="mt-2 text-2xl font-black text-slate-900">
-              Exporta la agenda visible sin copiar fechas a mano
-            </h3>
-            <p class="mt-2 max-w-2xl text-sm text-slate-600">
-              El archivo `.ics` respeta los filtros activos de categoría,
-              búsqueda y rango de fechas e incluye un recordatorio Criollos 6
-              horas antes de cada evento. Puedes importarlo en Apple Calendar,
-              Google Calendar u otras apps compatibles.
-            </p>
-          </div>
-          <div class="flex flex-wrap gap-3">
-            <a
-              :href="calendarDownloadUrl"
-              class="inline-flex items-center justify-center rounded-2xl bg-[#CE1126] px-5 py-3 text-sm font-black uppercase tracking-widest text-white transition hover:bg-[#b00e20]"
-            >
-              Descargar `.ics`
-            </a>
-            <a
-              href="#eventos-results"
-              class="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-            >
-              Ver agenda visible
-            </a>
-          </div>
-        </div>
-      </section>
+      <FeedStatus
+        :metadata="displayFeed?.metadata"
+        :pending="pending || refreshing"
+        :error="Boolean(error)"
+        :has-data="Boolean(displayFeed?.data?.length)"
+        @retry="retryFeed"
+      />
 
       <div
         v-if="pending && !displayFeed?.data?.length"
-        class="flex flex-col items-center justify-center py-20"
+        class="surface catalog-state"
+        role="status"
       >
-        <div
-          class="h-12 w-12 animate-spin rounded-full border-b-2 border-[#CE1126]"
-        ></div>
-        <p class="mt-4 font-medium text-slate-500">
-          Montando la agenda cultural...
-        </p>
+        <LoaderCircle :size="28" class="animate-spin" aria-hidden="true" />
+        <h3>Buscando los eventos…</h3>
+        <p>Un momento mientras consultamos la información.</p>
       </div>
-
       <div
         v-else-if="error && !displayFeed?.data?.length"
-        class="rounded-3xl border border-red-100 bg-red-50 p-8 text-center"
+        class="surface catalog-state"
       >
-        <span class="mb-4 block text-4xl">⚠️</span>
-        <h2 class="mb-2 text-xl font-bold text-red-800">
-          No pudimos cargar la agenda
-        </h2>
-        <p class="mb-6 text-red-600">
-          Hubo un error al conectar con el API Criollos.
+        <CircleAlert :size="28" aria-hidden="true" />
+        <h3>No pudimos cargar los eventos</h3>
+        <p>
+          La información no está disponible ahora. Vuelve a intentar en unos
+          minutos.
         </p>
         <button
+          type="button"
+          class="btn-primary"
           :disabled="refreshing || pending"
           @click="retryFeed"
-          class="rounded-full bg-red-600 px-6 py-2 font-bold text-white transition-colors hover:bg-red-700"
         >
           Reintentar
         </button>
       </div>
 
-      <div
-        v-else
-        id="eventos-results"
-        class="grid grid-cols-1 gap-8 md:grid-cols-2"
-        aria-live="polite"
-      >
+      <div v-else id="eventos-results" class="catalog-grid">
         <article
-          v-for="item in displayFeed?.data"
+          v-for="item in visibleItems"
           :id="`event-${item.id}`"
           :key="item.id"
-          class="group scroll-mt-6 flex flex-col overflow-hidden rounded-3xl border border-rose-100 bg-white shadow-sm transition-all hover:shadow-xl"
+          class="surface catalog-card"
         >
-          <div v-if="item.imageUrl" class="relative h-64 overflow-hidden">
+          <div class="catalog-media">
             <img
-              :src="item.imageUrl"
+              v-if="safeSourceUrl(item.imageUrl) && !failedImages.has(item.id)"
+              :src="safeSourceUrl(item.imageUrl)"
               :alt="item.imageAlt || item.title"
-              class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+              decoding="async"
+              @error="imageFailed(item.id)"
             />
-            <div
-              class="absolute left-4 top-4 rounded-full bg-[#CE1126] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-lg"
-            >
-              {{ item.category }}
-            </div>
+            <CalendarDays
+              v-else
+              :size="32"
+              :stroke-width="1.4"
+              aria-hidden="true"
+            />
           </div>
-
-          <div class="flex flex-1 flex-col p-8">
-            <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
-              <span
-                class="text-xs font-bold uppercase tracking-widest text-[#CE1126]"
-                >{{ item.category }}</span
-              >
-              <span
-                v-if="item.rawDate"
-                class="text-xs font-medium text-slate-400"
-                >{{ item.rawDate }}</span
-              >
+          <div class="catalog-body">
+            <div class="catalog-tags">
+              <span class="catalog-tag">{{ item.category }}</span>
             </div>
-
-            <h3
-              class="mb-2 text-2xl font-black leading-tight text-slate-800 transition-colors group-hover:text-[#CE1126]"
-            >
-              {{ item.title }}
-            </h3>
-
-            <p v-if="item.venue" class="mb-4 text-sm font-bold text-slate-500">
-              {{ item.venue }}
+            <h3 class="brand-display">{{ item.title }}</h3>
+            <p class="catalog-meta">
+              <CalendarDays :size="15" aria-hidden="true" /><span>{{
+                eventDateLabel(item)
+              }}</span>
             </p>
-
-            <p class="mb-8 line-clamp-4 leading-relaxed text-slate-600">
+            <p v-if="item.venue" class="catalog-meta">
+              <MapPin :size="15" aria-hidden="true" /><span>{{
+                item.venue
+              }}</span>
+            </p>
+            <p v-if="item.description" class="catalog-description">
               {{ item.description }}
             </p>
-
-            <div class="mt-auto flex flex-wrap gap-3">
-              <a
-                v-if="item.sourceUrl"
-                :href="item.sourceUrl"
-                target="_blank"
-                rel="noreferrer"
-                class="inline-flex items-center gap-2 text-sm font-black uppercase tracking-widest text-[#CE1126] transition-all hover:gap-3"
-              >
-                Ver detalles
-                <span>→</span>
-              </a>
-              <a
-                v-if="getGoogleCalendarUrl(item)"
-                :href="getGoogleCalendarUrl(item)"
-                target="_blank"
-                rel="noreferrer"
-                class="inline-flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-700 transition-all hover:gap-3"
-              >
-                Añadir a Google Calendar
-                <span>↗</span>
-              </a>
-            </div>
+          </div>
+          <div class="catalog-actions">
+            <a
+              v-if="safeSourceUrl(item.sourceUrl)"
+              :href="safeSourceUrl(item.sourceUrl)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="catalog-source"
+              :aria-label="`Ver detalles de ${item.title} en ${sourceName(item.sourceUrl)} (abre otra pestaña)`"
+            >
+              <span
+                >Ver detalles<small>{{
+                  sourceName(item.sourceUrl)
+                }}</small></span
+              ><ArrowUpRight :size="17" aria-hidden="true" />
+            </a>
+            <span v-else class="catalog-source-missing"
+              >Sin enlace de la fuente</span
+            >
+            <a
+              v-if="getGoogleCalendarUrl(item)"
+              :href="getGoogleCalendarUrl(item)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn-secondary catalog-save"
+              :aria-label="`Guardar ${item.title} en Google Calendar (abre otra pestaña)`"
+            >
+              <CalendarPlus :size="16" aria-hidden="true" /> Guardar
+            </a>
           </div>
         </article>
+      </div>
+
+      <div v-if="hasMoreResults" class="catalog-pagination">
+        <p aria-live="polite">
+          Mostrando {{ visibleItems.length }} de
+          {{ displayFeed?.count ?? displayFeed?.data?.length }}.
+        </p>
+        <button
+          type="button"
+          class="btn-secondary"
+          :disabled="pending"
+          @click="showMoreResults"
+        >
+          Ver más eventos
+        </button>
       </div>
 
       <div
@@ -523,50 +262,94 @@
           !pending &&
           !error &&
           displayFeed?.metadata?.state !== 'unavailable' &&
-          (!displayFeed?.data || displayFeed?.data.length === 0)
+          !displayFeed?.data?.length
         "
         id="eventos-empty-state"
-        class="rounded-3xl border border-dashed border-rose-200 bg-white py-20 text-center"
+        class="surface catalog-state"
         role="status"
         aria-live="polite"
       >
-        <span class="mb-4 block text-5xl">🎭</span>
-        <p class="text-lg text-slate-600">
-          No encontramos eventos para ese filtro.
+        <Search :size="28" aria-hidden="true" />
+        <h3>
+          {{
+            hasActiveFilters
+              ? 'No hay eventos con estos filtros'
+              : 'No hay eventos publicados por ahora'
+          }}
+        </h3>
+        <p>
+          {{
+            hasActiveFilters
+              ? 'Prueba otra búsqueda o quita los filtros para ver más opciones.'
+              : 'Vuelve más tarde o actualiza para consultar la fuente otra vez.'
+          }}
         </p>
-        <p class="mt-2 text-sm text-slate-500">
-          Prueba otra fecha, categoría o limpia la búsqueda para volver a la
-          agenda completa.
-        </p>
-        <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <div class="catalog-state-actions">
           <button
+            v-if="hasActiveFilters"
             type="button"
-            class="inline-flex items-center justify-center rounded-2xl bg-[#CE1126] px-5 py-3 text-sm font-black uppercase tracking-widest text-white transition hover:bg-[#b00e20]"
+            class="btn-primary"
             @click="clearFilters"
           >
             Limpiar filtros
           </button>
-          <a
-            href="#eventos-filters"
-            class="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+          <button
+            v-else
+            type="button"
+            class="btn-primary"
+            :disabled="refreshing || pending"
+            @click="retryFeed"
           >
-            Volver a filtros
-          </a>
+            Actualizar
+          </button>
+          <a href="#eventos-filters" class="btn-secondary">Volver a filtros</a>
         </div>
       </div>
-    </main>
+    </section>
 
-    <footer class="bg-slate-900 px-6 py-10 text-center text-slate-400">
-      <div class="mx-auto max-w-5xl">
-        <p class="text-sm font-medium">
-          © 2026 Criollos · Agenda cultural de Caguas 🍍
-        </p>
+    <details
+      v-if="featuredPlanCards.length && displayFeed?.data?.length"
+      id="eventos-featured-plans"
+      class="surface catalog-ideas"
+    >
+      <summary>
+        <Sparkles :size="18" aria-hidden="true" /> Ideas para los próximos días
+      </summary>
+      <div class="catalog-idea-grid">
+        <article v-for="plan in featuredPlanCards" :key="plan.id">
+          <h3>{{ plan.title }}</h3>
+          <p>{{ plan.meta }}</p>
+          <a
+            :href="`#event-${plan.primaryEventId}`"
+            class="catalog-source"
+            :aria-label="`Ver ${plan.primaryEventTitle} en la agenda`"
+            >Ver en la agenda <ArrowDown :size="16" aria-hidden="true"
+          /></a>
+        </article>
       </div>
-    </footer>
-  </div>
+    </details>
+    <p v-if="displayFeed?.data?.length" class="catalog-help">
+      La descarga guarda esta selección como un archivo de calendario. Los
+      eventos sin fecha confirmada no se incluyen.
+    </p>
+  </main>
 </template>
 
 <script setup>
+import {
+  ArrowDown,
+  ArrowUpRight,
+  CalendarDays,
+  CalendarPlus,
+  CircleAlert,
+  Download,
+  LoaderCircle,
+  MapPin,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  X,
+} from 'lucide-vue-next'
 import {
   buildCalendarDownloadUrl,
   buildGoogleCalendarUrl,
@@ -575,44 +358,54 @@ import {
   getActiveEventFilters,
   getStableEventCategories,
 } from '../../utils/eventsFilters'
-import {
-  getEventsAlertCards,
-  getEventsSummaryCards,
-  getFeaturedEventPlanCards,
-} from '../../utils/eventsSummary'
+import { getFeaturedEventPlanCards } from '../../utils/eventsSummary'
 
-const route = useRoute()
-const router = useRouter()
-
-const normalizeQueryValue = (value) => {
-  if (Array.isArray(value)) {
-    return value[0] || ''
+const safeSourceUrl = (value) => {
+  if (typeof value !== 'string' || !value.trim()) return null
+  try {
+    const url = new URL(value)
+    return ['https:', 'http:'].includes(url.protocol) &&
+      !url.username &&
+      !url.password
+      ? url.href
+      : null
+  } catch {
+    return null
   }
-
+}
+const sourceName = (value) => {
+  const href = safeSourceUrl(value)
+  return href ? new URL(href).hostname.replace(/^www\./, '') : ''
+}
+const failedImages = ref(new Set())
+const imageFailed = (id) => {
+  failedImages.value = new Set([...failedImages.value, id])
+}
+const normalizeQueryValue = (value) => {
+  if (Array.isArray(value)) return value[0] || ''
   return typeof value === 'string' ? value : ''
 }
+const route = useRoute()
+const router = useRouter()
+const pagePath = route.path
+const appliedQuery = computed(() =>
+  router.currentRoute.value.path === pagePath
+    ? router.currentRoute.value.query
+    : route.query
+)
 
-const selectedCategory = ref(normalizeQueryValue(route.query.category))
-const searchDraft = ref(normalizeQueryValue(route.query.q))
-const fromDraft = ref(normalizeQueryValue(route.query.from))
-const toDraft = ref(normalizeQueryValue(route.query.to))
-
-const queryParams = computed(() => {
-  const params = {}
-
-  if (selectedCategory.value) params.category = selectedCategory.value
-
-  const trimmedQuery = searchDraft.value.trim()
-  if (trimmedQuery) params.q = trimmedQuery
-  if (fromDraft.value) params.from = fromDraft.value
-  if (toDraft.value) params.to = toDraft.value
-
-  return params
-})
-
+const selectedCategory = ref(normalizeQueryValue(appliedQuery.value.category))
+const searchDraft = ref(normalizeQueryValue(appliedQuery.value.q))
+const fromDraft = ref(normalizeQueryValue(appliedQuery.value.from))
+const toDraft = ref(normalizeQueryValue(appliedQuery.value.to))
+const queryParams = computed(() => ({
+  category: normalizeQueryValue(appliedQuery.value.category) || undefined,
+  q: normalizeQueryValue(appliedQuery.value.q).trim() || undefined,
+  from: normalizeQueryValue(appliedQuery.value.from) || undefined,
+  to: normalizeQueryValue(appliedQuery.value.to) || undefined,
+}))
 const { data: fullFeed, refresh: refreshFullFeed } =
   await useFetch('/api/v1/eventos')
-
 const {
   data: feed,
   pending,
@@ -629,6 +422,29 @@ watch(feed, (value) => {
   if (value?.data) lastSuccessfulFeed.value = value
 })
 const displayFeed = computed(() => feed.value || lastSuccessfulFeed.value)
+const lastSuccessfulFullFeed = shallowRef(fullFeed.value)
+watch(fullFeed, (value) => {
+  if (value?.data && value.metadata?.state !== 'unavailable')
+    lastSuccessfulFullFeed.value = value
+})
+const displayFullFeed = computed(() =>
+  fullFeed.value && fullFeed.value.metadata?.state !== 'unavailable'
+    ? fullFeed.value
+    : lastSuccessfulFullFeed.value
+)
+const visibleLimit = ref(24)
+const visibleItems = computed(() =>
+  (displayFeed.value?.data || []).slice(0, visibleLimit.value)
+)
+const hasMoreResults = computed(
+  () => (displayFeed.value?.data?.length || 0) > visibleLimit.value
+)
+watch(queryParams, () => {
+  visibleLimit.value = 24
+})
+const showMoreResults = () => {
+  visibleLimit.value += 24
+}
 const retryFeed = async () => {
   if (refreshing.value || pending.value) return
   refreshing.value = true
@@ -640,146 +456,558 @@ const retryFeed = async () => {
 }
 
 const availableCategories = computed(() =>
-  getStableEventCategories(fullFeed.value?.summary?.categories || [])
+  getStableEventCategories(displayFullFeed.value?.summary?.categories || [])
 )
-
 const hasActiveFilters = computed(() =>
-  Boolean(
-    selectedCategory.value ||
-    searchDraft.value.trim() ||
-    fromDraft.value ||
-    toDraft.value
-  )
+  Object.values(queryParams.value).some(Boolean)
 )
-
 const activeFilters = computed(() =>
   getActiveEventFilters({
-    selectedCategory: selectedCategory.value,
-    searchQuery: searchDraft.value,
-    from: fromDraft.value,
-    to: toDraft.value,
+    selectedCategory: queryParams.value.category,
+    searchQuery: queryParams.value.q,
+    from: queryParams.value.from,
+    to: queryParams.value.to,
   })
 )
-
 const resultSummary = computed(() => {
-  if (pending.value) {
-    return 'Actualizando agenda…'
-  }
-
-  if (error.value) return 'Resultados sin confirmar; vuelve a intentar.'
-  if (displayFeed.value?.metadata?.state === 'unavailable')
-    return 'Fuente no disponible'
-
   const count = displayFeed.value?.count ?? 0
-  const categoriesCount = availableCategories.value.length
-  const categoryLabel =
-    categoriesCount === 1
-      ? '1 categoría disponible'
-      : `${categoriesCount} categorías disponibles`
-  const countLabel =
-    count === 1 ? '1 evento visible' : `${count} eventos visibles`
-  return `${countLabel} · ${categoryLabel}`
+  if (error.value)
+    return count
+      ? `${count} eventos anteriores · actualización pendiente`
+      : 'Agenda sin confirmar'
+  if (displayFeed.value?.metadata?.state === 'unavailable')
+    return 'Agenda sin confirmar'
+  if (pending.value) return 'Actualizando agenda…'
+  return count === 1 ? '1 evento' : `${count} eventos`
 })
-
-const summaryCards = computed(() =>
-  getEventsSummaryCards(
-    displayFeed.value?.summary,
-    displayFeed.value?.count ?? 0
-  )
-)
-const alertCards = computed(() =>
-  getEventsAlertCards(displayFeed.value?.summary)
-)
 const featuredPlanCards = computed(() => {
-  const apiPlans =
-    displayFeed.value?.summary?.featuredPlans?.filter(Boolean) || []
-  return apiPlans.length
-    ? apiPlans
+  const plans = displayFeed.value?.summary?.featuredPlans?.filter(Boolean) || []
+  return plans.length
+    ? plans
     : getFeaturedEventPlanCards(displayFeed.value?.data || [])
 })
 const calendarDownloadUrl = computed(() =>
-  buildCalendarDownloadUrl('/calendars/eventos.ics', {
-    category: selectedCategory.value || undefined,
-    q: searchDraft.value.trim() || undefined,
-    from: fromDraft.value || undefined,
-    to: toDraft.value || undefined,
-  })
+  buildCalendarDownloadUrl('/calendars/eventos.ics', queryParams.value)
 )
-
 const getGoogleCalendarUrl = (item) =>
   buildGoogleCalendarUrl({
     title: item.title,
     description: item.description,
     venue: item.venue,
-    sourceUrl: item.sourceUrl,
+    sourceUrl: safeSourceUrl(item.sourceUrl),
     publishedAt: item.publishedAt,
   })
-
+const eventDateLabel = (item) => {
+  if (item.rawDate) return item.rawDate
+  const date = item.publishedAt ? new Date(item.publishedAt) : null
+  return date && !Number.isNaN(date.getTime())
+    ? new Intl.DateTimeFormat('es-PR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      }).format(date)
+    : 'Fecha por confirmar'
+}
 watch(
-  () => route.query,
-  (query) => {
-    selectedCategory.value = normalizeQueryValue(query.category)
-    searchDraft.value = normalizeQueryValue(query.q)
-    fromDraft.value = normalizeQueryValue(query.from)
-    toDraft.value = normalizeQueryValue(query.to)
-  }
+  () => appliedQuery.value.category,
+  (value) => {
+    selectedCategory.value = normalizeQueryValue(value)
+  },
+  { flush: 'sync' }
 )
-
-const pushQueryState = async () => {
-  const nextQuery = {
-    ...route.query,
-    category: selectedCategory.value || undefined,
-    q: searchDraft.value.trim() || undefined,
-    from: fromDraft.value || undefined,
-    to: toDraft.value || undefined,
+watch(
+  () => appliedQuery.value.q,
+  (value) => {
+    searchDraft.value = normalizeQueryValue(value)
+  },
+  { flush: 'sync' }
+)
+watch(
+  () => appliedQuery.value.from,
+  (value) => {
+    fromDraft.value = normalizeQueryValue(value)
+  },
+  { flush: 'sync' }
+)
+watch(
+  () => appliedQuery.value.to,
+  (value) => {
+    toDraft.value = normalizeQueryValue(value)
+  },
+  { flush: 'sync' }
+)
+let pendingQuery = null
+const getQueryState = () => pendingQuery || appliedQuery.value
+const pushQueryState = async (patch) => {
+  const nextQuery = { ...getQueryState(), ...patch }
+  pendingQuery = nextQuery
+  try {
+    await router.push({ path: pagePath, query: nextQuery })
+  } finally {
+    if (pendingQuery === nextQuery) pendingQuery = null
   }
-
-  await router.replace({ query: nextQuery })
 }
-
-const applyFilters = async () => {
-  await pushQueryState()
+const applySearch = () =>
+  pushQueryState({ q: searchDraft.value.trim() || undefined })
+const applyFilters = (key) => {
+  const values = {
+    category: selectedCategory.value,
+    from: fromDraft.value,
+    to: toDraft.value,
+  }
+  return pushQueryState({ [key]: values[key] || undefined })
 }
-
-const applySearch = async () => {
-  await pushQueryState()
-}
-
-const clearFilters = async () => {
+const clearFilters = () => {
   selectedCategory.value = ''
   searchDraft.value = ''
   fromDraft.value = ''
   toDraft.value = ''
-  await router.replace({ query: {} })
+  return pushQueryState({
+    category: undefined,
+    q: undefined,
+    from: undefined,
+    to: undefined,
+  })
 }
-
-const removeFilter = async (key) => {
-  if (key === 'category') {
-    selectedCategory.value = ''
-  }
-
-  if (key === 'q') {
-    searchDraft.value = ''
-  }
-
-  if (key === 'from') {
-    fromDraft.value = ''
-  }
-
-  if (key === 'to') {
-    toDraft.value = ''
-  }
-
-  await pushQueryState()
-}
-
+const removeFilter = (key) => pushQueryState({ [key]: undefined })
 useHead({
-  title: 'Eventos Caguas | Criollos',
+  title: 'Eventos en Caguas | Criollos',
   meta: [
     {
       name: 'description',
-      content: 'Agenda pública para descubrir eventos y actividades en Caguas.',
+      content:
+        'Encuentra eventos y actividades en Caguas. Busca por categoría o fecha y guarda tu próximo plan en el calendario.',
     },
   ],
 })
 </script>
+
+<style scoped>
+.catalog-page {
+  padding-block: 2.5rem 3rem;
+}
+.catalog-heading {
+  margin-bottom: 1.5rem;
+}
+.catalog-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-blue);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.catalog-heading h1 {
+  margin-top: 0.45rem;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1.18;
+}
+.catalog-heading > p:last-child {
+  margin-top: 0.7rem;
+  max-width: 44rem;
+  color: var(--color-muted);
+}
+.catalog-tools {
+  margin-bottom: 1.5rem;
+  padding: 1.2rem;
+}
+.catalog-search {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+}
+.catalog-search > .catalog-field {
+  flex: 1;
+  min-width: 0;
+}
+.catalog-field label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.catalog-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.8rem;
+}
+.catalog-tools details {
+  margin-top: 0.7rem;
+}
+.catalog-tools summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  width: fit-content;
+  cursor: pointer;
+  color: var(--color-navy);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.catalog-tools summary::after {
+  content: '+';
+  margin-left: 0.35rem;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+.catalog-tools details[open] summary::after {
+  content: '−';
+}
+.catalog-help {
+  margin-top: 0.65rem;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.catalog-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.catalog-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  color: var(--color-navy);
+  background: var(--color-surface);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.catalog-chip[aria-pressed='true'] {
+  border-color: var(--color-navy);
+  background: var(--color-navy);
+  color: white;
+}
+.catalog-chip:hover {
+  border-color: var(--color-blue);
+}
+.catalog-active .catalog-chip {
+  background: var(--color-blue-soft);
+}
+.catalog-chip-count {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.catalog-results-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin: 1.5rem 0 1rem;
+}
+.catalog-results-head h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+.catalog-results-head p {
+  margin-top: 0.2rem;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.catalog-results-head .btn-secondary {
+  font-size: 0.85rem;
+}
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+.catalog-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  scroll-margin-top: 7rem;
+  box-shadow: none;
+}
+.catalog-media {
+  display: grid;
+  place-items: center;
+  height: 210px;
+  overflow: hidden;
+  background: var(--color-cream-deep);
+  color: var(--color-navy);
+}
+.catalog-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.catalog-body {
+  padding: 1.15rem 1.15rem 0.5rem;
+}
+.catalog-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+.catalog-tag {
+  border-radius: 0.3rem;
+  padding: 0.2rem 0.45rem;
+  background: var(--color-blue-soft);
+}
+.catalog-tag-food {
+  background: var(--color-ochre-soft);
+  color: var(--color-warning);
+}
+.catalog-body h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.catalog-meta {
+  display: flex;
+  align-items: start;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  color: var(--color-ink-soft);
+  font-size: 0.85rem;
+}
+.catalog-meta svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.catalog-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  margin-top: 0.7rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+.catalog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: auto;
+  padding: 0.8rem 1.15rem 1rem;
+}
+.catalog-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  color: var(--color-navy);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.catalog-source:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.catalog-source span {
+  display: flex;
+  flex-direction: column;
+}
+.catalog-source small {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.catalog-save {
+  font-size: 0.8rem;
+  padding: 0.55rem 0.8rem;
+}
+.catalog-source-missing {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+.catalog-state {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+.catalog-state > svg {
+  display: block;
+  margin: 0 auto 0.8rem;
+  color: var(--color-blue);
+}
+.catalog-state h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.catalog-state p {
+  max-width: 30rem;
+  margin: 0.6rem auto 1.1rem;
+  color: var(--color-muted);
+}
+.catalog-state-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.catalog-ideas {
+  margin-top: 2rem;
+  padding: 0.3rem 1.1rem;
+  box-shadow: none;
+}
+.catalog-ideas > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 56px;
+  cursor: pointer;
+  color: var(--color-navy);
+  font-weight: 700;
+}
+.catalog-ideas > summary::after {
+  content: '+';
+  margin-left: auto;
+  font-size: 1.3rem;
+  font-weight: 400;
+}
+.catalog-ideas[open] > summary::after {
+  content: '−';
+}
+.catalog-idea-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 0.5rem 0 1rem;
+}
+.catalog-idea-grid article {
+  padding: 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+}
+.catalog-idea-grid h3 {
+  font-weight: 700;
+  line-height: 1.35;
+}
+.catalog-idea-grid p {
+  margin-block: 0.6rem;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.catalog-type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.catalog-type-options .catalog-chip {
+  gap: 0.4rem;
+}
+@media (min-width: 1100px) {
+  .catalog-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 639px) {
+  .catalog-page {
+    padding-top: 1.5rem;
+  }
+  .catalog-heading {
+    margin-bottom: 1.1rem;
+  }
+  .catalog-heading > p:last-child {
+    font-size: 0.9rem;
+  }
+  .catalog-tools {
+    padding: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .catalog-search {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .catalog-search .btn-primary {
+    padding-inline: 1rem;
+  }
+  .catalog-search .btn-secondary {
+    flex-basis: 100%;
+  }
+  .catalog-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .catalog-filter-grid > .catalog-field:first-child {
+    grid-column: 1 / -1;
+  }
+  .catalog-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+  .catalog-card {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    align-content: start;
+  }
+  .catalog-media {
+    height: 100%;
+    min-height: 145px;
+  }
+  .catalog-media img {
+    min-height: 145px;
+  }
+  .catalog-body {
+    padding: 0.85rem 0.85rem 0.3rem;
+  }
+  .catalog-body h3 {
+    font-size: 1.08rem;
+  }
+  .catalog-tags {
+    font-size: 0.68rem;
+    margin-bottom: 0.4rem;
+  }
+  .catalog-description {
+    -webkit-line-clamp: 2;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    margin-top: 0.5rem;
+  }
+  .catalog-meta {
+    font-size: 0.77rem;
+  }
+  .catalog-actions {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--color-line);
+    padding: 0.4rem 0.85rem;
+  }
+  .catalog-results-head {
+    margin-top: 1rem;
+  }
+  .catalog-idea-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.catalog-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.catalog-pagination p {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+@media (max-width: 359px) {
+  .catalog-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+</style>

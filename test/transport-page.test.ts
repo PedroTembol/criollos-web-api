@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { parse, compileScript } from '@vue/compiler-sfc'
 import { transformWithEsbuild } from 'vite'
 import * as Vue from 'vue'
+import * as Icons from 'lucide-vue-next'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest'
 import * as transportHelpers from '../app/utils/transportLinks'
@@ -22,6 +23,11 @@ beforeAll(async () => {
   })
   const executable = code
     .replace(
+      /import\s*\{([^}]+)\}\s*from\s*["']lucide-vue-next["'];?/g,
+      (_, names: string) =>
+        `const {${names.replace(/\s+as\s+/g, ':')}} = icons;`
+    )
+    .replace(
       /import\s*\{([^}]+)\}\s*from\s*["']vue["'];?/g,
       (_, names: string) => `const {${names.replace(/\s+as\s+/g, ':')}} = vue;`
     )
@@ -32,6 +38,7 @@ beforeAll(async () => {
     .replace(/export default/, 'return')
   createPage = new Function(
     'vue',
+    'icons',
     'helpers',
     'useRoute',
     'useRouter',
@@ -125,6 +132,7 @@ async function page(
   )
   const component = createPage(
     Vue,
+    Icons,
     transportHelpers,
     () => currentRoute,
     () => router,
@@ -182,7 +190,7 @@ describe('transport page interactions', () => {
     expect(
       new URL(maps[0]!.attributes('href')!).searchParams.get('query')
     ).toBe('18.235,-66.032')
-    expect(wrapper.text()).toContain('no representan una hora de llegada')
+    expect(wrapper.text()).toContain('no representa una hora de llegada')
   })
   test('changes route and follows restored query state when navigating back', async () => {
     const { wrapper, router, currentRoute } = await page({
@@ -206,7 +214,9 @@ describe('transport page interactions', () => {
     expect(missing.wrapper.text()).toContain(
       'selección de ruta no está en el catálogo'
     )
-    expect(missing.wrapper.find('#route-details-title').exists()).toBe(false)
+    expect(missing.wrapper.find('#route-details-title').text()).toBe(
+      'Consulta un recorrido'
+    )
   })
   test('shows initial loading and empty telemetry without declaring an outage', async () => {
     const catalogRequest = request(null, true)

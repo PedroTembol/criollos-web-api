@@ -6,6 +6,7 @@
 .cache
 dist
 .lighthouseci
+.playwright-cli
 
 # Node dependencies
 node_modules
